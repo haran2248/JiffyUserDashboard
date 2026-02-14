@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Internal user dashboard for Jiffy - View and manage user data efficiently">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Jiffy User Dashboard - Internal Tools</title>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles/main.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  
+  <!-- Loading Overlay -->
+  <div id="loader" class="loader">
+    <div class="loader-spinner"></div>
+    <p>Loading users...</p>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <div class="logo-section">
+          <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
+              <path d="M12 9L20 16L12 23V9Z" fill="white"/>
+              <defs>
+                <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+                  <stop offset="0%" stop-color="#8B5CF6"/>
+                  <stop offset="100%" stop-color="#EC4899"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <h1>Jiffy Dashboard</h1>
+            <span class="logo-subtitle">Internal User Management</span>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button id="refreshBtn" class="btn-icon" title="Refresh data">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M4 2v6h6M16 18v-6h-6M2.5 10a8 8 0 0113-6.3M17.5 10a8 8 0 01-13 6.3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-purple">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value" id="totalUsers">0</h3>
+            <p class="stat-label">Total Users</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value" id="activeUsers">0</h3>
+            <p class="stat-label">Active Users</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value" id="verifiedUsers">0</h3>
+            <p class="stat-label">Verified Users</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-pink">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value" id="displayedUsers">0</h3>
+            <p class="stat-label">Displayed</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls-section">
+        <div class="search-box">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+          </svg>
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input" 
+            placeholder="Search by name, email, college, or location..."
+          >
+        </div>
+
+        <div class="controls-right">
+          <select id="statusFilter" class="filter-select">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="waitlisted">Waitlisted</option>
+          </select>
+
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" data-view="table" title="Table view">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <path d="M3 4h12M3 9h12M3 14h12"/>
+              </svg>
+            </button>
+            <button class="view-toggle-btn" data-view="cards" title="Card view">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <rect x="2" y="2" width="6" height="6" rx="1"/>
+                <rect x="10" y="2" width="6" height="6" rx="1"/>
+                <rect x="2" y="10" width="6" height="6" rx="1"/>
+                <rect x="10" y="10" width="6" height="6" rx="1"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div id="tableView" class="table-container">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>College</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Verified</th>
+              <th>Registered</th>
+              <th>Last Login</th>
+              <th>Profile</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <!-- Users will be dynamically inserted here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Card View -->
+      <div id="cardView" class="cards-container" style="display: none;">
+        <!-- User cards will be dynamically inserted here -->
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 Jiffy. Internal use only.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="scripts/config.js"></script>
+  <script src="scripts/app.js"></script>
+  
+</body>
+</html>
