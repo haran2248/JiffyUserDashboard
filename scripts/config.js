@@ -8,24 +8,24 @@ const CONFIG = {
     },
     authRequired: false
   },
-  
+
   // Production environment - replace with actual backend URL
   prod: {
-    apiBaseUrl: 'https://your-backend-api.com/api',
+    apiBaseUrl: 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com/api',
     endpoints: {
-      users: '/users'
+      users: '/users/getAllUsers'
     },
-    authRequired: false,
+    authRequired: false
     // Add authentication headers when needed
-    headers: {
-      // 'Authorization': 'Bearer YOUR_TOKEN',
-      // 'X-API-Key': 'YOUR_API_KEY'
-    }
+    // headers: {
+    //   'Authorization': 'Bearer YOUR_TOKEN',
+    //   'X-API-Key': 'YOUR_API_KEY'
+    // }
   }
 };
 
 // Set current environment (change to 'prod' when ready)
-const ENV = 'dev';
+const ENV = 'prod';  // Using production API
 
 // Export current configuration
 const API_CONFIG = CONFIG[ENV];

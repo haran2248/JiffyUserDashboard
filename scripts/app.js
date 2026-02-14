@@ -32,8 +32,13 @@ class UserDashboard {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            this.users = await response.json();
+            const backendData = await response.json();
+
+            // Transform backend data to dashboard format using mapper
+            this.users = mapBackendUsers(backendData);
             this.filteredUsers = [...this.users];
+
+            console.log(`Loaded ${this.users.length} users from backend`);
 
             this.updateStats();
         } catch (error) {
