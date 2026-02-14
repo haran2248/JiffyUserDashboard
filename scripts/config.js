@@ -24,6 +24,11 @@ const CONFIG = {
   }
 };
 
+// S3 bucket configuration for images
+const S3_CONFIG = {
+  baseUrl: 'https://jiffystorebucket.s3.ap-south-1.amazonaws.com/'
+};
+
 // Set current environment (change to 'prod' when ready)
 const ENV = 'prod';  // Using production API
 

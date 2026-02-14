@@ -1,9 +1,10 @@
-// User Dashboard Application
+// User Dashboard Application - Grid View with Images
 
 class UserDashboard {
     constructor() {
         this.users = [];
         this.filteredUsers = [];
+        this.currentGenderFilter = 'all';
         this.init();
     }
 
@@ -54,16 +55,10 @@ class UserDashboard {
             searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
         }
 
-        // Status filter
-        const statusFilter = document.getElementById('statusFilter');
-        if (statusFilter) {
-            statusFilter.addEventListener('change', (e) => this.handleFilter(e.target.value));
-        }
-
-        // View toggle
-        const viewToggleBtns = document.querySelectorAll('.view-toggle-btn');
-        viewToggleBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => this.toggleView(e.target.dataset.view));
+        // Gender filter
+        const genderBtns = document.querySelectorAll('.gender-btn');
+        genderBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleGenderFilter(e.target.dataset.gender));
         });
 
         // Refresh button
@@ -76,35 +71,40 @@ class UserDashboard {
     handleSearch(query) {
         const searchTerm = query.toLowerCase().trim();
 
+        // Apply both search and gender filter
         this.filteredUsers = this.users.filter(user => {
-            return (
+            const matchesSearch = searchTerm === '' ||
                 user.name.toLowerCase().includes(searchTerm) ||
-                user.email.toLowerCase().includes(searchTerm) ||
-                user.college.toLowerCase().includes(searchTerm) ||
-                user.location.toLowerCase().includes(searchTerm)
-            );
+                user.college.toLowerCase().includes(searchTerm);
+
+            const matchesGender = this.currentGenderFilter === 'all' ||
+                user.gender === this.currentGenderFilter;
+
+            return matchesSearch && matchesGender;
         });
 
         this.renderUsers();
         this.updateStats();
     }
 
-    handleFilter(status) {
-        if (status === 'all') {
-            this.filteredUsers = [...this.users];
-        } else {
-            this.filteredUsers = this.users.filter(user => user.status === status);
-        }
+    handleGenderFilter(gender) {
+        this.currentGenderFilter = gender;
 
-        this.renderUsers();
-        this.updateStats();
+        // Update active button
+        document.querySelectorAll('.gender-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.gender === gender);
+        });
+
+        // Re-apply filters
+        const searchInput = document.getElementById('searchInput');
+        this.handleSearch(searchInput ? searchInput.value : '');
     }
 
     renderUsers() {
-        const container = document.getElementById('userTableBody') || document.getElementById('userCardsContainer');
+        const container = document.getElementById('userGrid');
 
         if (!container) {
-            console.error('User container not found');
+            console.error('User grid container not found');
             return;
         }
 
@@ -113,91 +113,48 @@ class UserDashboard {
             return;
         }
 
-        const isTableView = container.id === 'userTableBody';
+        container.innerHTML = this.filteredUsers.map(user => this.createGridCard(user)).join('');
 
-        if (isTableView) {
-            container.innerHTML = this.filteredUsers.map(user => this.createUserRow(user)).join('');
-        } else {
-            container.innerHTML = this.filteredUsers.map(user => this.createUserCard(user)).join('');
-        }
-
-        // Add click listeners for user rows/cards
+        // Add click listeners
         this.attachUserClickListeners();
     }
 
-    createUserRow(user) {
-        return `
-      <tr class="user-row" data-user-id="${user.id}">
-        <td>
-          <div class="user-cell">
-            <div class="user-avatar">${this.getInitials(user.name)}</div>
-            <div class="user-info">
-              <div class="user-name">${this.escapeHtml(user.name)}</div>
-              <div class="user-email">${this.escapeHtml(user.email)}</div>
-            </div>
-          </div>
-        </td>
-        <td>${this.escapeHtml(user.college)}</td>
-        <td>${this.escapeHtml(user.location)}</td>
-        <td><span class="status-badge status-${user.status}">${this.capitalize(user.status)}</span></td>
-        <td><span class="verified-badge ${user.verified ? 'verified' : 'unverified'}">${user.verified ? '✓ Verified' : '✗ Unverified'}</span></td>
-        <td>${this.formatDate(user.registrationDate)}</td>
-        <td>${this.formatDate(user.lastLogin)}</td>
-        <td>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width: ${user.profileCompletion}%"></div>
-            <span class="progress-text">${user.profileCompletion}%</span>
-          </div>
-        </td>
-      </tr>
-    `;
-    }
+    createGridCard(user) {
+        // Get image URL from S3
+        const imageUrl = user._original?.firstImageId
+            ? `${S3_CONFIG.baseUrl}${user._original.firstImageId}`
+            : this.getPlaceholderImage(user.gender);
 
-    createUserCard(user) {
+        const age = user.age ? `, ${user.age}` : '';
+
         return `
-      <div class="user-card" data-user-id="${user.id}">
-        <div class="card-header">
-          <div class="user-avatar-large">${this.getInitials(user.name)}</div>
-          <div class="card-badges">
-            <span class="status-badge status-${user.status}">${this.capitalize(user.status)}</span>
-            ${user.verified ? '<span class="verified-icon">✓</span>' : ''}
+      <div class="grid-card" data-user-id="${user.id}">
+        <img 
+          src="${imageUrl}" 
+          alt="${this.escapeHtml(user.name)}"
+          class="grid-card-image"
+          onerror="this.src='${this.getPlaceholderImage(user.gender)}'"
+        >
+        <div class="grid-card-content">
+          <div class="grid-card-name">${this.escapeHtml(user.name)}${age}</div>
+          <div class="grid-card-college">
+            <span>🎓</span>
+            <span>${this.escapeHtml(user.college)}</span>
           </div>
-        </div>
-        <div class="card-body">
-          <h3 class="card-name">${this.escapeHtml(user.name)}</h3>
-          <p class="card-email">${this.escapeHtml(user.email)}</p>
-          <div class="card-details">
-            <div class="detail-item">
-              <span class="detail-icon">🎓</span>
-              <span class="detail-text">${this.escapeHtml(user.college)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-icon">📍</span>
-              <span class="detail-text">${this.escapeHtml(user.location)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-icon">💬</span>
-              <span class="detail-text">${user.matchCount} matches</span>
-            </div>
-          </div>
-          <div class="profile-completion">
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${user.profileCompletion}%"></div>
-            </div>
-            <span class="progress-label">Profile ${user.profileCompletion}% complete</span>
-          </div>
-        </div>
-        <div class="card-footer">
-          <span class="card-date">Joined ${this.formatDate(user.registrationDate)}</span>
-          <span class="card-date">Last seen ${this.formatRelativeTime(user.lastLogin)}</span>
         </div>
       </div>
     `;
     }
 
+    getPlaceholderImage(gender) {
+        // Return a gradient-based placeholder
+        const color = gender === 'Woman' ? '#EC4899' : '#8B5CF6';
+        return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect width='400' height='533' fill='${encodeURIComponent(color)}'/%3E%3Ctext x='50%25' y='50%25' font-size='120' fill='white' text-anchor='middle' dy='.3em' font-family='Arial'%3E👤%3C/text%3E%3C/svg%3E`;
+    }
+
     getEmptyState() {
         return `
-      <div class="empty-state">
+      <div class="empty-state" style="grid-column: 1 / -1;">
         <div class="empty-icon">🔍</div>
         <h3>No users found</h3>
         <p>Try adjusting your search or filter criteria</p>
@@ -206,7 +163,7 @@ class UserDashboard {
     }
 
     attachUserClickListeners() {
-        const userElements = document.querySelectorAll('.user-row, .user-card');
+        const userElements = document.querySelectorAll('.grid-card');
         userElements.forEach(element => {
             element.addEventListener('click', () => {
                 const userId = element.dataset.userId;
@@ -219,21 +176,32 @@ class UserDashboard {
         const user = this.users.find(u => u.id === userId);
         if (!user) return;
 
-        // Create modal with user details
+        const original = user._original || {};
+        const curated = original.curatedProfile || {};
+        const imageUrl = original.firstImageId
+            ? `${S3_CONFIG.baseUrl}${original.firstImageId}`
+            : this.getPlaceholderImage(user.gender);
+
+        // Create modal with enhanced user details
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.innerHTML = `
       <div class="modal-content">
         <span class="modal-close">&times;</span>
-        <h2>User Details</h2>
-        <div class="user-details-grid">
-          ${Object.entries(user).map(([key, value]) => `
-            <div class="detail-row">
-              <span class="detail-label">${this.formatLabel(key)}:</span>
-              <span class="detail-value">${this.formatValue(key, value)}</span>
-            </div>
-          `).join('')}
-        </div>
+        
+        <img src="${imageUrl}" alt="${this.escapeHtml(user.name)}" class="modal-profile-image" 
+             onerror="this.src='${this.getPlaceholderImage(user.gender)}'">
+        
+        <h2 style="text-align: center; margin-bottom: var(--spacing-xl);">
+          ${this.escapeHtml(user.name)}${user.age ? `, ${user.age}` : ''}
+        </h2>
+
+        ${this.renderBasicInfo(user)}
+        ${this.renderPersonalityTraits(curated.personalityTraits)}
+        ${this.renderInterests(curated.interests)}
+        ${this.renderConversationStyle(curated.conversationStyleDescription)}
+        ${this.renderAboutMe(curated.aboutMe)}
+        ${this.renderAdditionalDetails(user, original)}
       </div>
     `;
 
@@ -245,6 +213,136 @@ class UserDashboard {
                 modal.remove();
             }
         });
+    }
+
+    renderBasicInfo(user) {
+        return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📋 Basic Information
+        </div>
+        <div class="user-details-grid">
+          <div class="detail-row">
+            <span class="detail-label">Email:</span>
+            <span class="detail-value">${this.escapeHtml(user.email)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Phone:</span>
+            <span class="detail-value">${this.escapeHtml(user.phone)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">College:</span>
+            <span class="detail-value">${this.escapeHtml(user.college)}</span>
+          </div>
+          ${user.gender ? `
+          <div class="detail-row">
+            <span class="detail-label">Gender:</span>
+            <span class="detail-value">${user.gender}</span>
+          </div>
+          ` : ''}
+          ${user.lookingFor ? `
+          <div class="detail-row">
+            <span class="detail-label">Looking For:</span>
+            <span class="detail-value">${user.lookingFor}</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    }
+
+    renderPersonalityTraits(traits) {
+        if (!traits || traits.length === 0) return '';
+
+        return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          ✨ Personality Traits
+        </div>
+        <div class="personality-traits">
+          ${traits.map(trait => `<span class="trait-badge">${this.escapeHtml(trait)}</span>`).join('')}
+        </div>
+      </div>
+    `;
+    }
+
+    renderInterests(interests) {
+        if (!interests || interests.length === 0) return '';
+
+        return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          💡 Interests
+        </div>
+        <div class="interests-list">
+          ${interests.map(interest => `<span class="interest-badge">${this.escapeHtml(interest)}</span>`).join('')}
+        </div>
+      </div>
+    `;
+    }
+
+    renderConversationStyle(description) {
+        if (!description) return '';
+
+        return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          💬 Conversation Style
+        </div>
+        <div class="conversation-text">${this.escapeHtml(description)}</div>
+      </div>
+    `;
+    }
+
+    renderAboutMe(aboutMe) {
+        if (!aboutMe) return '';
+
+        return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📖 About Me
+        </div>
+        <p style="color: var(--color-text-secondary); line-height: 1.6;">${this.escapeHtml(aboutMe)}</p>
+      </div>
+    `;
+    }
+
+    renderAdditionalDetails(user, original) {
+        return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📊 Additional Details
+        </div>
+        <div class="user-details-grid">
+          <div class="detail-row">
+            <span class="detail-label">Status:</span>
+            <span class="detail-value">
+              <span class="status-badge status-${user.status}">${this.capitalize(user.status)}</span>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Verified:</span>
+            <span class="detail-value ${user.verified ? 'verified' : 'unverified'}">${user.verified ? '✓ Yes' : '✗ No'}</span>
+          </div>
+<div class="detail-row">
+            <span class="detail-label">Profile Completion:</span>
+            <span class="detail-value">${user.profileCompletion}%</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Match Count:</span>
+            <span class="detail-value">${user.matchCount}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Registered:</span>
+            <span class="detail-value">${this.formatDate(user.registrationDate)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Last Login:</span>
+            <span class="detail-value">${this.formatRelativeTime(user.lastLogin)}</span>
+          </div>
+        </div>
+      </div>
+    `;
     }
 
     updateStats() {
@@ -266,31 +364,18 @@ class UserDashboard {
         }
     }
 
-    toggleView(view) {
-        // Update active button
-        document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === view);
-        });
-
-        // Toggle view containers
-        const tableView = document.getElementById('tableView');
-        const cardView = document.getElementById('cardView');
-
-        if (view === 'table') {
-            tableView.style.display = 'block';
-            cardView.style.display = 'none';
-        } else {
-            tableView.style.display = 'none';
-            cardView.style.display = 'grid';
-        }
-
-        this.renderUsers();
-    }
-
     async refresh() {
         this.showLoading(true);
         await this.fetchUsers();
-        this.renderUsers();
+
+        // Reapply current filters
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            this.handleSearch(searchInput.value);
+        } else {
+            this.renderUsers();
+        }
+
         this.showLoading(false);
         this.showToast('Data refreshed successfully!');
     }
@@ -325,15 +410,6 @@ class UserDashboard {
     }
 
     // Utility functions
-    getInitials(name) {
-        return name
-            .split(' ')
-            .map(n => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
-    }
-
     capitalize(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -366,23 +442,6 @@ class UserDashboard {
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
         return this.formatDate(dateString);
-    }
-
-    formatLabel(key) {
-        return key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase())
-            .trim();
-    }
-
-    formatValue(key, value) {
-        if (key.includes('Date') || key.includes('Login')) {
-            return this.formatDate(value);
-        }
-        if (typeof value === 'boolean') {
-            return value ? '✓ Yes' : '✗ No';
-        }
-        return this.escapeHtml(String(value));
     }
 }
 
