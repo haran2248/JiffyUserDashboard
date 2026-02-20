@@ -9,8 +9,8 @@
   <title>Jiffy User Dashboard - Internal Tools</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="styles/main.css">
-  <link rel="stylesheet" href="styles/grid.css">
+  <link rel="stylesheet" href="styles/main.css?v=3">
+  <link rel="stylesheet" href="styles/grid.css?v=3">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -136,6 +136,7 @@
             <button class="gender-btn" data-gender="Man">Male</button>
             <button class="gender-btn" data-gender="Woman">Female</button>
           </div>
+          <button id="matchModeBtn" class="match-mode-toggle">⚡ Match Mode</button>
         </div>
       </div>
 
@@ -147,6 +148,22 @@
     </div>
   </main>
 
+  <!-- Floating Match Bar -->
+  <div id="matchBar" class="match-bar" style="display:none;">
+    <div class="match-bar-inner">
+      <div class="match-chip" id="matchChipA">
+        <div class="match-chip-avatar" id="matchAvatarA"></div>
+        <span class="match-chip-name" id="matchNameA">Select user 1</span>
+      </div>
+      <div class="match-vs">vs</div>
+      <div class="match-chip" id="matchChipB">
+        <div class="match-chip-avatar" id="matchAvatarB"></div>
+        <span class="match-chip-name" id="matchNameB">Select user 2</span>
+      </div>
+      <button id="matchConfirmBtn" class="match-confirm-btn" disabled>Match!</button>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
@@ -155,9 +172,9 @@
   </footer>
 
   <!-- Scripts -->
-  <script src="scripts/config.js"></script>
-  <script src="scripts/mapper.js"></script>
-  <script src="scripts/app.js"></script>
+  <script src="scripts/config.js?v=3"></script>
+  <script src="scripts/mapper.js?v=3"></script>
+  <script src="scripts/app.js?v=3"></script>
 
 </body>
 

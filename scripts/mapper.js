@@ -88,6 +88,9 @@ function mapBackendUser(backendUser) {
         age: calculateAge(backendUser.basicDetails?.birthDate),
         gender: backendUser.basicDetails?.gender,
         lookingFor: backendUser.desiredQualities?.lookingFor,
+        preferredGender: backendUser.desiredQualities?.preferredGender || backendUser.desiredQualities?.interestedIn || null,
+        interests: backendUser.curatedProfile?.interests || [],
+        conversationStyle: backendUser.curatedProfile?.conversationStyleDescription || null,
         onboardingStatus: backendUser.onboardingStatus,
         uid: backendUser.uid,
 
