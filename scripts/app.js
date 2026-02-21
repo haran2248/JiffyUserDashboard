@@ -165,27 +165,62 @@ class UserDashboard {
     if (confirmBtn) confirmBtn.disabled = this.selectedForMatch.length < 2;
   }
 
-  confirmMatch() {
+  async confirmMatch() {
     if (this.selectedForMatch.length < 2) return;
 
     const userA = this.users.find(u => u.id === this.selectedForMatch[0]);
     const userB = this.users.find(u => u.id === this.selectedForMatch[1]);
 
-    console.log('Match confirmed:', {
-      userA: { id: userA.id, name: userA.name },
-      userB: { id: userB.id, name: userB.name },
-      timestamp: new Date().toISOString()
-    });
+    const buildCandidate = (user) => {
+      const orig = user._original || {};
+      return {
+        candidateUserId: user.uid || user.id,
+        name: user.name,
+        age: user.age ? String(user.age) : '',
+        location: user.location || '',
+        imageId: orig.firstImageId || '',
+        secondImageId: orig.secondImageId || '',
+        thirdImageId: orig.thirdImageId || '',
+        fourthImageId: orig.fourthImageId || '',
+        matchReason: 'test'
+      };
+    };
 
-    // TODO: Fire API call here
-    // await fetch('/api/matches', { method: 'POST', body: JSON.stringify({ userAId: userA.id, userBId: userB.id }) })
+    const payload = {
+      candidate1: buildCandidate(userA),
+      candidate2: buildCandidate(userB)
+    };
 
-    this.showToast(`Matched ${userA.name} with ${userB.name}!`);
+    const confirmBtn = document.getElementById('matchConfirmBtn');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Saving...';
+    }
 
-    // Clear selection
-    this.selectedForMatch = [];
-    this.updateMatchBar();
-    document.querySelectorAll('.grid-card.selected').forEach(c => c.classList.remove('selected'));
+    try {
+      const url = `${SUGGESTIONS_API.baseUrl}${SUGGESTIONS_API.endpoints.save}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+
+      console.log('Match saved:', payload);
+      this.showToast(`Matched ${userA.name} with ${userB.name}!`);
+    } catch (error) {
+      console.error('Failed to save match:', error);
+      this.showError(`Failed to save match: ${error.message}`);
+    } finally {
+      this.selectedForMatch = [];
+      this.updateMatchBar();
+      document.querySelectorAll('.grid-card.selected').forEach(c => c.classList.remove('selected'));
+      if (confirmBtn) {
+        confirmBtn.textContent = 'Match!';
+        confirmBtn.disabled = false;
+      }
+    }
   }
 
   // ─── Grid Rendering ────────────────────────────────────────────────────────

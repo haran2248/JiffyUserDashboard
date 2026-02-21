@@ -34,3 +34,11 @@ const ENV = 'prod';  // Using production API
 
 // Export current configuration
 const API_CONFIG = CONFIG[ENV];
+
+// Suggestions API (internal match service)
+const SUGGESTIONS_API = {
+  baseUrl: 'http://localhost:5003',
+  endpoints: {
+    save: '/api/suggestions/save'
+  }
+};
