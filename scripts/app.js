@@ -284,12 +284,15 @@ class UserDashboard {
     return `
       <div class="grid-card${this.selectedForMatch.includes(user.id) ? ' selected' : ''}" data-user-id="${user.id}">
         ${this.matchMode ? '<div class="card-select-badge">✓</div>' : ''}
-        <img 
-          src="${imageUrl}" 
-          alt="${this.escapeHtml(user.name)}"
-          class="grid-card-image"
-          onerror="this.src='${this.getPlaceholderImage(user.gender)}'"
-        >
+        <div class="grid-card-image-wrapper">
+          <img 
+            src="${imageUrl}" 
+            alt="${this.escapeHtml(user.name)}"
+            class="grid-card-image"
+            onerror="this.src='${this.getPlaceholderImage(user.gender)}'"
+          >
+          ${aiBadge}
+        </div>
         <div class="grid-card-content">
           <div class="grid-card-name">${this.escapeHtml(user.name)}${age}</div>
           <div class="grid-card-college">
@@ -654,6 +657,330 @@ class UserDashboard {
 }
 
 // Initialize app when DOM is ready
+let dashboardInstance = null;
 document.addEventListener('DOMContentLoaded', () => {
-  new UserDashboard();
+  dashboardInstance = new UserDashboard();
 });
+
+// ─── Create User Modal Functions ──────────────────────────────────────────────
+
+function openCreateUserModal() {
+  const modal = document.getElementById('createUserModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    // Auto-generate UID for form mode
+    generateUid();
+  }
+}
+
+function closeCreateUserModal() {
+  const modal = document.getElementById('createUserModal');
+  if (modal) modal.style.display = 'none';
+  // Clear feedback
+  const feedback = document.getElementById('createUserFeedback');
+  if (feedback) { feedback.style.display = 'none'; feedback.className = 'create-user-feedback'; }
+}
+
+function switchCreateTab(tab) {
+  // Toggle active tab button
+  document.querySelectorAll('.create-user-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  // Toggle tab content
+  document.getElementById('formTab').classList.toggle('active', tab === 'form');
+  document.getElementById('jsonTab').classList.toggle('active', tab === 'json');
+}
+
+function toggleSection(legend) {
+  const body = legend.nextElementSibling;
+  if (body) {
+    body.classList.toggle('collapsed');
+    legend.textContent = body.classList.contains('collapsed')
+      ? legend.textContent.replace('▾', '▸')
+      : legend.textContent.replace('▸', '▾');
+  }
+}
+
+function generateUid() {
+  // Firebase-like uid: 28 alphanumeric characters
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let uid = '';
+  for (let i = 0; i < 28; i++) uid += chars.charAt(Math.floor(Math.random() * chars.length));
+  const input = document.getElementById('formUid');
+  if (input) input.value = uid;
+}
+
+function parseCommaSeparated(value) {
+  if (!value || !value.trim()) return null;
+  return value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+}
+
+async function submitFormUser(event) {
+  event.preventDefault();
+  const form = document.getElementById('createUserForm');
+  const btn = document.getElementById('formSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Submitting...';
+
+  try {
+    const fd = new FormData(form);
+    const get = (name) => fd.get(name)?.toString().trim() || '';
+
+    // Build the request payload matching ManualUserRequest DTO
+    const payload = {
+      name: get('name'),
+      uid: get('uid'),
+    };
+
+    // Optional string fields
+    if (get('email')) payload.email = get('email');
+    if (get('phoneNumber')) payload.phoneNumber = get('phoneNumber');
+    if (get('bio')) payload.bio = get('bio');
+    if (get('firstImageId')) payload.firstImageId = get('firstImageId');
+
+    // Image IDs
+    const imageIds = parseCommaSeparated(get('imageIds'));
+    if (imageIds) payload.imageIds = imageIds;
+
+    // Basic Details
+    const gender = get('gender');
+    const preferredGender = get('preferredGender');
+    const birthDate = get('birthDate');
+    const height = get('height');
+    if (gender || preferredGender || birthDate || height) {
+      payload.basicDetails = {};
+      payload.basicDetails.name = get('name'); // sync name
+      if (gender) payload.basicDetails.gender = gender;
+      if (preferredGender) payload.basicDetails.preferredGender = preferredGender;
+      if (birthDate) payload.basicDetails.birthDate = birthDate;
+      if (height) payload.basicDetails.height = parseInt(height);
+    }
+
+    // Personal Description
+    const personalityList = parseCommaSeparated(get('personalityList'));
+    const preferredActivityList = parseCommaSeparated(get('preferredActivityList'));
+    const filmAndTVList = parseCommaSeparated(get('filmAndTVList'));
+    const languageList = parseCommaSeparated(get('languageList'));
+    const typeOfDrinker = get('typeOfDrinker');
+    const typeOfSmoker = get('typeOfSmoker');
+    if (personalityList || preferredActivityList || filmAndTVList || languageList || typeOfDrinker || typeOfSmoker) {
+      payload.personalDescription = {};
+      if (personalityList) payload.personalDescription.personalityList = personalityList;
+      if (preferredActivityList) payload.personalDescription.preferredActivityList = preferredActivityList;
+      if (filmAndTVList) payload.personalDescription.filmAndTVList = filmAndTVList;
+      if (languageList) payload.personalDescription.languageList = languageList;
+      if (typeOfDrinker) payload.personalDescription.typeOfDrinker = typeOfDrinker;
+      if (typeOfSmoker) payload.personalDescription.typeOfSmoker = typeOfSmoker;
+    }
+
+    // Weekend Plans
+    const goingOut = parseCommaSeparated(get('goingOut'));
+    const stayingIn = parseCommaSeparated(get('stayingIn'));
+    if (goingOut || stayingIn) {
+      payload.weekendPlans = {};
+      if (goingOut) payload.weekendPlans.goingOut = goingOut;
+      if (stayingIn) payload.weekendPlans.stayingIn = stayingIn;
+    }
+
+    // Date Timing
+    const dateRightNow = form.querySelector('[name="dateRightNow"]')?.checked || false;
+    const preferredDateSessions = parseCommaSeparated(get('preferredDateSessions'));
+    if (dateRightNow || preferredDateSessions) {
+      payload.dateTiming = {};
+      payload.dateTiming.dateRightNow = dateRightNow;
+      if (preferredDateSessions) payload.dateTiming.preferredDateSessions = preferredDateSessions;
+    }
+
+    // Professional Details
+    const university = get('university');
+    const graduationYear = get('graduationYear');
+    const companyName = get('companyName');
+    const titleCompany = get('titleCompany');
+    if (university || graduationYear || companyName || titleCompany) {
+      payload.professionalDetails = {};
+      if (university) payload.professionalDetails.university = university;
+      if (graduationYear) payload.professionalDetails.graduationYear = parseInt(graduationYear);
+      if (companyName) payload.professionalDetails.companyName = companyName;
+      if (titleCompany) payload.professionalDetails.titleCompany = titleCompany;
+    }
+
+    // Desired Qualities
+    const lookingFor = get('lookingFor');
+    const socialPersonalityList = parseCommaSeparated(get('socialPersonalityList'));
+    const preferredActivitiesList = parseCommaSeparated(get('preferredActivitiesList'));
+    const idealDate = get('idealDate');
+    const drinkingType = get('drinkingType');
+    const smokerType = get('smokerType');
+    if (lookingFor || socialPersonalityList || preferredActivitiesList || idealDate || drinkingType || smokerType) {
+      payload.desiredQualities = {};
+      if (lookingFor) payload.desiredQualities.lookingFor = lookingFor;
+      if (socialPersonalityList) payload.desiredQualities.socialPersonalityList = socialPersonalityList;
+      if (preferredActivitiesList) payload.desiredQualities.preferredActivitiesList = preferredActivitiesList;
+      if (idealDate) payload.desiredQualities.idealDate = idealDate;
+      if (drinkingType) payload.desiredQualities.drinkingType = drinkingType;
+      if (smokerType) payload.desiredQualities.smokerType = smokerType;
+    }
+
+    // Attractiveness Basic Info
+    const prefferedStartAge = get('prefferedStartAge');
+    const prefferedEndAge = get('prefferedEndAge');
+    const prefferedHeight = get('prefferedHeight');
+    const maxDistance = get('maxDistance');
+    const desiredLanguageList = parseCommaSeparated(get('desiredLanguageList'));
+    if (prefferedStartAge || prefferedEndAge || prefferedHeight || maxDistance || desiredLanguageList) {
+      payload.attractivenessBasicInfo = {};
+      if (prefferedStartAge) payload.attractivenessBasicInfo.prefferedStartAge = parseInt(prefferedStartAge);
+      if (prefferedEndAge) payload.attractivenessBasicInfo.prefferedEndAge = parseInt(prefferedEndAge);
+      if (prefferedHeight) payload.attractivenessBasicInfo.prefferedHeight = parseInt(prefferedHeight);
+      if (maxDistance) payload.attractivenessBasicInfo.maxDistance = parseInt(maxDistance);
+      if (desiredLanguageList) payload.attractivenessBasicInfo.languageList = desiredLanguageList;
+    }
+
+    // Location
+    const latitude = get('latitude');
+    const longitude = get('longitude');
+    if (latitude && longitude) {
+      payload.locationX = parseFloat(longitude); // x = longitude
+      payload.locationY = parseFloat(latitude);  // y = latitude
+    }
+
+    // Matching Profile
+    const energy = get('energy');
+    const depthPreference = get('depthPreference');
+    const communicationStyle = get('communicationStyle');
+    const openness = get('openness');
+    if (energy || depthPreference || communicationStyle || openness) {
+      payload.matchingProfile = {};
+      if (energy) payload.matchingProfile.energy = energy;
+      if (depthPreference) payload.matchingProfile.depthPreference = depthPreference;
+      if (communicationStyle) payload.matchingProfile.communicationStyle = communicationStyle;
+      if (openness) payload.matchingProfile.openness = parseFloat(openness);
+    }
+
+    // Curated Profile
+    const personalityTraits = parseCommaSeparated(get('personalityTraits'));
+    const interests = parseCommaSeparated(get('interests'));
+    const conversationStyleDescription = get('conversationStyleDescription');
+    if (personalityTraits || interests || conversationStyleDescription) {
+      payload.curatedProfile = {};
+      if (personalityTraits) payload.curatedProfile.personalityTraits = personalityTraits;
+      if (interests) payload.curatedProfile.interests = interests;
+      if (conversationStyleDescription) payload.curatedProfile.conversationStyleDescription = conversationStyleDescription;
+    }
+
+    // Generated Questions
+    const questionsRaw = get('generatedQuestions');
+    if (questionsRaw) {
+      payload.generatedQuestions = questionsRaw.split('\n').map(q => q.trim()).filter(q => q.length > 0);
+    }
+
+    // Status
+    payload.onboardingStatus = get('onboardingStatus') || 'COMPLETED';
+    payload.isVerified = form.querySelector('[name="isVerified"]')?.checked ?? true;
+    payload.isPhoneVerified = form.querySelector('[name="isPhoneVerified"]')?.checked ?? false;
+    const chatCount = get('chatCount');
+    if (chatCount) payload.chatCount = parseInt(chatCount);
+
+    console.log('Submitting form user:', payload);
+
+    const url = `${API_CONFIG.apiBaseUrl}${API_CONFIG.endpoints.createManualUser}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody.error || `HTTP ${response.status}`);
+    }
+
+    const savedUser = await response.json();
+    showCreateFeedback('success', `✅ User "${savedUser.name}" created/updated successfully! (uid: ${savedUser.uid})`);
+
+    // Refresh the dashboard grid
+    if (dashboardInstance) dashboardInstance.refresh();
+
+  } catch (error) {
+    console.error('Form submit error:', error);
+    showCreateFeedback('error', `❌ ${error.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Create / Upsert User';
+  }
+}
+
+async function submitJsonUser() {
+  const textarea = document.getElementById('jsonInput');
+  const btn = document.getElementById('jsonSubmitBtn');
+
+  if (!textarea || !textarea.value.trim()) {
+    showCreateFeedback('error', '❌ Please paste JSON first.');
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(textarea.value.trim());
+  } catch (e) {
+    showCreateFeedback('error', `❌ Invalid JSON: ${e.message}`);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Submitting...';
+
+  try {
+    const url = `${API_CONFIG.apiBaseUrl}${API_CONFIG.endpoints.upsertManualUserJson}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parsed)
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody.error || `HTTP ${response.status}`);
+    }
+
+    const savedUser = await response.json();
+    showCreateFeedback('success', `✅ User "${savedUser.name}" upserted via JSON! (uid: ${savedUser.uid})`);
+
+    // Refresh the dashboard grid
+    if (dashboardInstance) dashboardInstance.refresh();
+
+  } catch (error) {
+    console.error('JSON submit error:', error);
+    showCreateFeedback('error', `❌ ${error.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Submit JSON';
+  }
+}
+
+function validateJson() {
+  const textarea = document.getElementById('jsonInput');
+  if (!textarea || !textarea.value.trim()) {
+    showCreateFeedback('error', '❌ No JSON to validate.');
+    return;
+  }
+  try {
+    const parsed = JSON.parse(textarea.value.trim());
+    const keys = Object.keys(parsed);
+    showCreateFeedback('info', `✅ Valid JSON — ${keys.length} top-level keys: ${keys.slice(0, 8).join(', ')}${keys.length > 8 ? '...' : ''}`);
+  } catch (e) {
+    showCreateFeedback('error', `❌ Invalid JSON: ${e.message}`);
+  }
+}
+
+function showCreateFeedback(type, message) {
+  const feedback = document.getElementById('createUserFeedback');
+  if (!feedback) return;
+  feedback.className = `create-user-feedback ${type}`;
+  feedback.textContent = message;
+  feedback.style.display = 'block';
+  // Auto-hide success after 5s
+  if (type === 'success') {
+    setTimeout(() => { feedback.style.display = 'none'; }, 5000);
+  }
+}
