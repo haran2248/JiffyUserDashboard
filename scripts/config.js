@@ -34,7 +34,7 @@ const S3_CONFIG = {
 };
 
 // Set current environment (change to 'prod' when ready)
-const ENV = 'dev';  // Using local backend
+const ENV = 'prod';  // Using local backend
 
 // Export current configuration
 const API_CONFIG = CONFIG[ENV];
