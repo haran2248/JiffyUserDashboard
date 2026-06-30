@@ -1,10 +1,12 @@
 // API Configuration
 const CONFIG = {
-  // Development environment - using local mock data
+  // Development environment - using local backend
   dev: {
-    apiBaseUrl: './api',
+    apiBaseUrl: 'http://localhost:5005/api',
     endpoints: {
-      users: '/users.json'
+      users: '/users/getAllUsers',
+      createManualUser: '/users/manual',
+      upsertManualUserJson: '/users/manual/json'
     },
     authRequired: false
   },
@@ -13,7 +15,9 @@ const CONFIG = {
   prod: {
     apiBaseUrl: 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com/api',
     endpoints: {
-      users: '/users/getAllUsers'
+      users: '/users/getAllUsers',
+      createManualUser: '/users/manual',
+      upsertManualUserJson: '/users/manual/json'
     },
     authRequired: false
     // Add authentication headers when needed
@@ -30,7 +34,7 @@ const S3_CONFIG = {
 };
 
 // Set current environment (change to 'prod' when ready)
-const ENV = 'prod';  // Using production API
+const ENV = 'prod';  // Using local backend
 
 // Export current configuration
 const API_CONFIG = CONFIG[ENV];

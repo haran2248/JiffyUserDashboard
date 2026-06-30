@@ -9,8 +9,8 @@
   <title>Jiffy User Dashboard - Internal Tools</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="styles/main.css?v=7">
-  <link rel="stylesheet" href="styles/grid.css?v=7">
+  <link rel="stylesheet" href="styles/main.css?v=8">
+  <link rel="stylesheet" href="styles/grid.css?v=8">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +50,9 @@
         </div>
 
         <div class="header-actions">
+          <button id="createUserBtn" class="btn-create-user" title="Create user manually" onclick="openCreateUserModal()">
+            ➕ Create User
+          </button>
           <button id="refreshBtn" class="btn-icon" title="Refresh data">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               <path d="M4 2v6h6M16 18v-6h-6M2.5 10a8 8 0 0113-6.3M17.5 10a8 8 0 01-13 6.3" />
@@ -164,6 +167,404 @@
     </div>
   </div>
 
+
+  <!-- Create User Modal -->
+  <div id="createUserModal" class="create-user-modal" style="display:none;">
+    <div class="create-user-modal-content">
+      <span class="modal-close" onclick="closeCreateUserModal()">&times;</span>
+      <h2>Create / Upsert User</h2>
+
+      <!-- Tabs -->
+      <div class="create-user-tabs">
+        <button class="create-user-tab active" data-tab="form" onclick="switchCreateTab('form')">📝 Form</button>
+        <button class="create-user-tab" data-tab="json" onclick="switchCreateTab('json')">📋 JSON</button>
+      </div>
+
+      <!-- Form Tab -->
+      <div id="formTab" class="create-user-tab-content active">
+        <form id="createUserForm" onsubmit="submitFormUser(event)">
+
+          <!-- Core Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Core</legend>
+            <div class="form-section-body">
+              <div class="form-row">
+                <label>Name <span class="required">*</span></label>
+                <input type="text" name="name" required placeholder="Full name">
+              </div>
+              <div class="form-row">
+                <label>UID <span class="required">*</span></label>
+                <div class="uid-row">
+                  <input type="text" name="uid" id="formUid" required placeholder="Auto-generated or paste existing">
+                  <button type="button" class="btn-generate" onclick="generateUid()">🎲 Generate</button>
+                </div>
+              </div>
+              <div class="form-row">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="user@example.com">
+              </div>
+              <div class="form-row">
+                <label>Phone Number</label>
+                <input type="text" name="phoneNumber" placeholder="+911234567890">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Images Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Images</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Image IDs (comma-separated)</label>
+                <input type="text" name="imageIds" placeholder="uuid1, uuid2, ...">
+              </div>
+              <div class="form-row">
+                <label>First Image ID</label>
+                <input type="text" name="firstImageId" placeholder="Primary image UUID">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Basic Details Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Basic Details</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Gender</label>
+                  <select name="gender">
+                    <option value="">— Select —</option>
+                    <option value="Man">Man</option>
+                    <option value="Woman">Woman</option>
+                    <option value="Non-binary">Non-binary</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label>Preferred Gender</label>
+                  <select name="preferredGender">
+                    <option value="">— Select —</option>
+                    <option value="Men">Men</option>
+                    <option value="Women">Women</option>
+                    <option value="Everyone">Everyone</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Birth Date</label>
+                  <input type="date" name="birthDate">
+                </div>
+                <div class="form-row">
+                  <label>Height (cm)</label>
+                  <input type="number" name="height" placeholder="170">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Personal Description Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Personal Description</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Personality List (comma-separated)</label>
+                <input type="text" name="personalityList" placeholder="Thoughtful, Energetic, Adventurous">
+              </div>
+              <div class="form-row">
+                <label>Preferred Activities (comma-separated)</label>
+                <input type="text" name="preferredActivityList" placeholder="Gym, Coffee, Travel">
+              </div>
+              <div class="form-row">
+                <label>Film & TV (comma-separated)</label>
+                <input type="text" name="filmAndTVList" placeholder="Comedy, Drama, Sci-Fi">
+              </div>
+              <div class="form-row">
+                <label>Languages (comma-separated)</label>
+                <input type="text" name="languageList" placeholder="English, Hindi">
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Drinker Type</label>
+                  <input type="text" name="typeOfDrinker" placeholder="Social drinker">
+                </div>
+                <div class="form-row">
+                  <label>Smoker Type</label>
+                  <input type="text" name="typeOfSmoker" placeholder="Non-smoker">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Weekend Plans Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Weekend Plans</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Going Out (comma-separated)</label>
+                <input type="text" name="goingOut" placeholder="Bars, Restaurants, Concerts">
+              </div>
+              <div class="form-row">
+                <label>Staying In (comma-separated)</label>
+                <input type="text" name="stayingIn" placeholder="Movies, Cooking, Gaming">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Date Timing Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Date Timing</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>
+                  <input type="checkbox" name="dateRightNow"> Available for a date right now
+                </label>
+              </div>
+              <div class="form-row">
+                <label>Preferred Date Sessions (comma-separated)</label>
+                <input type="text" name="preferredDateSessions" placeholder="Coffee, Dinner, Activity">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Professional Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Professional</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>University</label>
+                  <input type="text" name="university" placeholder="MIT">
+                </div>
+                <div class="form-row">
+                  <label>Graduation Year</label>
+                  <input type="number" name="graduationYear" placeholder="2024">
+                </div>
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Company Name</label>
+                  <input type="text" name="companyName" placeholder="Google">
+                </div>
+                <div class="form-row">
+                  <label>Job Title</label>
+                  <input type="text" name="titleCompany" placeholder="Software Engineer">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Desired Qualities Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Desired Qualities</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Looking For</label>
+                <input type="text" name="lookingFor" placeholder="Long-term relationship">
+              </div>
+              <div class="form-row">
+                <label>Social Personality List (comma-separated)</label>
+                <input type="text" name="socialPersonalityList" placeholder="Outgoing, Witty">
+              </div>
+              <div class="form-row">
+                <label>Preferred Activities List (comma-separated)</label>
+                <input type="text" name="preferredActivitiesList" placeholder="Hiking, Cooking">
+              </div>
+              <div class="form-row">
+                <label>Ideal Date</label>
+                <input type="text" name="idealDate" placeholder="Coffee and a walk in the park">
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Drinking Preference</label>
+                  <input type="text" name="drinkingType" placeholder="Social drinker">
+                </div>
+                <div class="form-row">
+                  <label>Smoking Preference</label>
+                  <input type="text" name="smokerType" placeholder="Non-smoker">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Attractiveness Prefs Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Attractiveness Preferences</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Preferred Start Age</label>
+                  <input type="number" name="prefferedStartAge" placeholder="21">
+                </div>
+                <div class="form-row">
+                  <label>Preferred End Age</label>
+                  <input type="number" name="prefferedEndAge" placeholder="30">
+                </div>
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Preferred Height (cm)</label>
+                  <input type="number" name="prefferedHeight" placeholder="170">
+                </div>
+                <div class="form-row">
+                  <label>Max Distance (km)</label>
+                  <input type="number" name="maxDistance" placeholder="50">
+                </div>
+              </div>
+              <div class="form-row">
+                <label>Language Preferences (comma-separated)</label>
+                <input type="text" name="desiredLanguageList" placeholder="English, Hindi">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Location Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Location</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Latitude</label>
+                  <input type="number" step="any" name="latitude" placeholder="37.785834">
+                </div>
+                <div class="form-row">
+                  <label>Longitude</label>
+                  <input type="number" step="any" name="longitude" placeholder="-122.406417">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Matching Profile Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Matching Profile</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Energy</label>
+                  <select name="energy">
+                    <option value="">— Select —</option>
+                    <option value="CALM">CALM</option>
+                    <option value="HYPER">HYPER</option>
+                    <option value="BALANCED">BALANCED</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label>Depth Preference</label>
+                  <select name="depthPreference">
+                    <option value="">— Select —</option>
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label>Communication Style</label>
+                  <select name="communicationStyle">
+                    <option value="">— Select —</option>
+                    <option value="SLOW">SLOW</option>
+                    <option value="FAST">FAST</option>
+                    <option value="MIXED">MIXED</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label>Openness (0-1)</label>
+                  <input type="number" step="0.1" min="0" max="1" name="openness" placeholder="0.7">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Curated Profile Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Curated Profile</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Personality Traits (comma-separated)</label>
+                <input type="text" name="personalityTraits" placeholder="Thoughtful, Adventurous">
+              </div>
+              <div class="form-row">
+                <label>Interests (comma-separated)</label>
+                <input type="text" name="interests" placeholder="Coffee, Gym, Travel">
+              </div>
+              <div class="form-row">
+                <label>Conversation Style Description</label>
+                <textarea name="conversationStyleDescription" rows="2" placeholder="You appreciate heartfelt gestures..."></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Generated Questions Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Generated Questions</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Questions (one per line)</label>
+                <textarea name="generatedQuestions" rows="3" placeholder="What do you value in a relationship?&#10;Share an important relationship lesson."></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Status Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Status</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <label>Onboarding Status</label>
+                <select name="onboardingStatus">
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="NOT_STARTED">NOT_STARTED</option>
+                  <option value="CONTEXT_STORED">CONTEXT_STORED</option>
+                  <option value="ANSWERS_STORED">ANSWERS_STORED</option>
+                </select>
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label><input type="checkbox" name="isVerified" checked> Verified</label>
+                </div>
+                <div class="form-row">
+                  <label><input type="checkbox" name="isPhoneVerified"> Phone Verified</label>
+                </div>
+              </div>
+              <div class="form-row">
+                <label>Chat Count</label>
+                <input type="number" name="chatCount" value="2" placeholder="2">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Bio Section -->
+          <fieldset class="form-section">
+            <legend class="form-section-title" onclick="toggleSection(this)">▸ Bio</legend>
+            <div class="form-section-body collapsed">
+              <div class="form-row">
+                <textarea name="bio" rows="3" placeholder="Write a short bio..."></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <button type="submit" class="btn-submit" id="formSubmitBtn">🚀 Create / Upsert User</button>
+        </form>
+      </div>
+
+      <!-- JSON Tab -->
+      <div id="jsonTab" class="create-user-tab-content">
+        <div class="json-input-area">
+          <label>Paste JSON (clean or MongoDB Extended JSON)</label>
+          <textarea id="jsonInput" rows="16" placeholder='Paste a user JSON document here...\n\nSupports both clean JSON and MongoDB Compass export format ($date, $numberLong, $oid).\n\nFields like fcmToken and _class will be automatically stripped.'></textarea>
+        </div>
+        <div class="json-actions">
+          <button type="button" class="btn-validate" onclick="validateJson()">✅ Validate</button>
+          <button type="button" class="btn-submit" id="jsonSubmitBtn" onclick="submitJsonUser()">🚀 Submit JSON</button>
+        </div>
+      </div>
+
+      <!-- Feedback area -->
+      <div id="createUserFeedback" class="create-user-feedback" style="display:none;"></div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
@@ -172,9 +573,9 @@
   </footer>
 
   <!-- Scripts -->
-  <script src="scripts/config.js?v=7"></script>
-  <script src="scripts/mapper.js?v=7"></script>
-  <script src="scripts/app.js?v=7"></script>
+  <script src="scripts/config.js?v=8"></script>
+  <script src="scripts/mapper.js?v=8"></script>
+  <script src="scripts/app.js?v=8"></script>
 
 </body>
 
