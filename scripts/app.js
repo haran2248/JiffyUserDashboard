@@ -118,6 +118,7 @@ class UserDashboard {
       bar && (bar.style.display = "none");
       panel && (panel.style.display = "none");
       barInner && barInner.classList.remove("expanded");
+      bar && bar.classList.remove("expanded");
       // Clear match reason
       const reasonInput = document.getElementById("matchReasonInput");
       if (reasonInput) reasonInput.value = "";
@@ -155,6 +156,7 @@ class UserDashboard {
     const confirmBtn = document.getElementById("matchConfirmBtn");
     const panel = document.getElementById("matchComparisonPanel");
     const barInner = document.querySelector(".match-bar-inner");
+    const bar = document.getElementById("matchBar");
 
     const userA = this.selectedForMatch[0]
       ? this.users.find((u) => u.id === this.selectedForMatch[0])
@@ -187,10 +189,12 @@ class UserDashboard {
     if (userA && userB && panel) {
       panel.style.display = "block";
       barInner && barInner.classList.add("expanded");
+      bar && bar.classList.add("expanded");
       this.populateComparisonPanel(userA, userB);
     } else if (panel) {
       panel.style.display = "none";
       barInner && barInner.classList.remove("expanded");
+      bar && bar.classList.remove("expanded");
     }
   }
 
@@ -338,6 +342,8 @@ class UserDashboard {
       if (panel) panel.style.display = "none";
       const barInner = document.querySelector(".match-bar-inner");
       if (barInner) barInner.classList.remove("expanded");
+      const bar = document.getElementById("matchBar");
+      if (bar) bar.classList.remove("expanded");
     }
   }
 

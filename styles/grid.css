@@ -540,6 +540,15 @@
   justify-content: center;
   padding: 0 var(--spacing-lg);
   pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.match-bar.expanded {
+  top: 0;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: all;
+  padding: var(--spacing-xl);
 }
 
 .match-bar-inner {
@@ -564,6 +573,9 @@
 .match-bar-inner.expanded {
   max-width: 900px;
   padding: var(--spacing-xl) var(--spacing-2xl);
+  border-radius: 20px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .match-bar-mini {
@@ -945,4 +957,38 @@
 .btn-select-match:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+/* ========================================
+   Responsive Adjustments
+   ======================================== */
+@media (max-width: 768px) {
+  .match-bar.expanded {
+    padding: var(--spacing-md);
+  }
+  
+  .match-bar-inner.expanded {
+    padding: var(--spacing-lg);
+    width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .comparison-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .comparison-card {
+    width: 100%;
+  }
+  
+  .comparison-heart {
+    transform: rotate(90deg);
+    margin: var(--spacing-sm) 0;
+  }
+  
+  .heart-line {
+    height: 20px;
+  }
 }
