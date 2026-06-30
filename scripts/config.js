@@ -41,7 +41,7 @@ const API_CONFIG = CONFIG[ENV];
 
 // Suggestions API (internal match service)
 const SUGGESTIONS_API = {
-  baseUrl: 'http://localhost:5003',
+  baseUrl: 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com',
   endpoints: {
     save: '/api/suggestions/save'
   }

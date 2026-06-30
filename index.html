@@ -9,8 +9,8 @@
   <title>Jiffy User Dashboard - Internal Tools</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="styles/main.css?v=8">
-  <link rel="stylesheet" href="styles/grid.css?v=8">
+  <link rel="stylesheet" href="styles/main.css?v=9">
+  <link rel="stylesheet" href="styles/grid.css?v=9">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -120,6 +120,27 @@
             <p class="stat-label">Displayed</p>
           </div>
         </div>
+
+        <div class="stat-card stat-card-match">
+          <div class="stat-icon stat-icon-magenta">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value" id="matchesMade">0</h3>
+            <p class="stat-label">Matches Made</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Matches -->
+      <div id="recentMatchesSection" class="recent-matches-section" style="display:none;">
+        <div class="recent-matches-header" onclick="toggleRecentMatches()">
+          <span>💘 Recent Matches</span>
+          <span id="recentMatchesToggle" class="toggle-icon">▾</span>
+        </div>
+        <div id="recentMatchesList" class="recent-matches-list"></div>
       </div>
 
       <!-- Controls -->
@@ -154,16 +175,60 @@
   <!-- Floating Match Bar -->
   <div id="matchBar" class="match-bar" style="display:none;">
     <div class="match-bar-inner">
-      <div class="match-chip" id="matchChipA">
-        <div class="match-chip-avatar" id="matchAvatarA"></div>
-        <span class="match-chip-name" id="matchNameA">Select user 1</span>
+      <div class="match-bar-mini">
+        <div class="match-chip" id="matchChipA">
+          <div class="match-chip-avatar" id="matchAvatarA"></div>
+          <span class="match-chip-name" id="matchNameA">Select user 1</span>
+        </div>
+        <div class="match-vs">💕</div>
+        <div class="match-chip" id="matchChipB">
+          <div class="match-chip-avatar" id="matchAvatarB"></div>
+          <span class="match-chip-name" id="matchNameB">Select user 2</span>
+        </div>
       </div>
-      <div class="match-vs">vs</div>
-      <div class="match-chip" id="matchChipB">
-        <div class="match-chip-avatar" id="matchAvatarB"></div>
-        <span class="match-chip-name" id="matchNameB">Select user 2</span>
+
+      <!-- Expanded comparison panel (shown when 2 users selected) -->
+      <div id="matchComparisonPanel" class="match-comparison-panel" style="display:none;">
+        <div class="comparison-cards">
+          <div class="comparison-card" id="compCardA">
+            <img class="comparison-photo" id="compPhotoA" src="" alt="User A">
+            <div class="comparison-info">
+              <h3 id="compNameA">-</h3>
+              <p class="comparison-meta" id="compMetaA"></p>
+              <div class="comparison-tags" id="compTagsA"></div>
+            </div>
+          </div>
+
+          <div class="comparison-heart">
+            <div class="heart-icon">💘</div>
+            <div class="heart-line"></div>
+          </div>
+
+          <div class="comparison-card" id="compCardB">
+            <img class="comparison-photo" id="compPhotoB" src="" alt="User B">
+            <div class="comparison-info">
+              <h3 id="compNameB">-</h3>
+              <p class="comparison-meta" id="compMetaB"></p>
+              <div class="comparison-tags" id="compTagsB"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shared-interests" id="sharedInterests" style="display:none;">
+          <span class="shared-label">🤝 Shared Interests:</span>
+          <div class="shared-tags" id="sharedTags"></div>
+        </div>
+
+        <div class="match-reason-section">
+          <label class="match-reason-label" for="matchReasonInput">
+            ✍️ Match Pitch — Why should they consider each other?
+          </label>
+          <textarea id="matchReasonInput" class="match-reason-input" rows="3"
+            placeholder="e.g. Both are passionate foodies who love exploring hidden cafes. They share a love for deep conversations and weekend hikes. Their complementary personalities — one's spontaneity paired with the other's thoughtfulness — could make for an exciting dynamic."></textarea>
+        </div>
       </div>
-      <button id="matchConfirmBtn" class="match-confirm-btn" disabled>Match!</button>
+
+      <button id="matchConfirmBtn" class="match-confirm-btn" disabled>💘 Suggest Match</button>
     </div>
   </div>
 
@@ -573,9 +638,9 @@
   </footer>
 
   <!-- Scripts -->
-  <script src="scripts/config.js?v=8"></script>
-  <script src="scripts/mapper.js?v=8"></script>
-  <script src="scripts/app.js?v=8"></script>
+  <script src="scripts/config.js?v=9"></script>
+  <script src="scripts/mapper.js?v=9"></script>
+  <script src="scripts/app.js?v=9"></script>
 
 </body>
 
