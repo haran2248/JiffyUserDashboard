@@ -251,6 +251,58 @@ class UserDashboard {
     } else if (sharedSection) {
       sharedSection.style.display = "none";
     }
+
+    // Attach event listener for Auto-Generate Pitch
+    const btnGeneratePitch = document.getElementById("btnGeneratePitch");
+    if (btnGeneratePitch) {
+      btnGeneratePitch.onclick = () => this.generatePitch(userA, userB);
+    }
+  }
+
+  async generatePitch(userA, userB) {
+    const btn = document.getElementById("btnGeneratePitch");
+    const vibeInput = document.getElementById("vibeTextInput");
+    const compInput = document.getElementById("complementTextInput");
+    const fricInput = document.getElementById("frictionTextInput");
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "✨ Generating...";
+    }
+
+    try {
+      // Endpoint to JiffyPythonAgent (typically runs on 8000 or similar, adjust if needed)
+      // Let's assume there's an API config for it, or just use hardcoded localhost for now
+      const url = "http://localhost:8000/match/pitch/generate";
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject_user_id: userB.id,
+          viewer_user_id: userA.id,
+          subject_user_model: userB._original || {},
+          viewer_user_model: userA._original || {},
+          subject_signals: userB._original?.signalProfile || {},
+          viewer_signals: userA._original?.signalProfile || {}
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to generate pitch");
+      const data = await response.json();
+
+      if (vibeInput) vibeInput.value = data.vibeText || "";
+      if (compInput) compInput.value = data.complementText || "";
+      if (fricInput) fricInput.value = data.frictionText || "";
+
+    } catch (error) {
+      console.error(error);
+      this.showError("Failed to generate pitch via AI.");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "✨ Auto-Generate";
+      }
+    }
   }
 
   async confirmMatch() {
@@ -259,24 +311,31 @@ class UserDashboard {
     const userA = this.users.find((u) => u.id === this.selectedForMatch[0]);
     const userB = this.users.find((u) => u.id === this.selectedForMatch[1]);
 
-    // Get the match reason/pitch from the textarea
-    const reasonInput = document.getElementById("matchReasonInput");
-    const matchReason = reasonInput ? reasonInput.value.trim() : "";
+    // Get the match pitch from the textareas
+    const vibeInput = document.getElementById("vibeTextInput");
+    const compInput = document.getElementById("complementTextInput");
+    const fricInput = document.getElementById("frictionTextInput");
+    
+    const vibeText = vibeInput ? vibeInput.value.trim() : "";
+    const complementText = compInput ? compInput.value.trim() : "";
+    const frictionText = fricInput ? fricInput.value.trim() : "";
 
-    if (!matchReason) {
-      // Highlight the textarea if empty
-      if (reasonInput) {
-        reasonInput.style.borderColor = '#EF4444';
-        reasonInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
-        reasonInput.focus();
-        reasonInput.setAttribute('placeholder', '⚠️ Please write a match pitch — why should these two meet?');
-        setTimeout(() => {
-          reasonInput.style.borderColor = '';
-          reasonInput.style.boxShadow = '';
-        }, 3000);
-      }
+    if (!vibeText || !complementText || !frictionText) {
+      // Highlight empty ones
+      [vibeInput, compInput, fricInput].forEach(inp => {
+        if (inp && !inp.value.trim()) {
+          inp.style.borderColor = '#EF4444';
+          inp.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
+          setTimeout(() => {
+            inp.style.borderColor = '';
+            inp.style.boxShadow = '';
+          }, 3000);
+        }
+      });
       return;
     }
+
+    const matchPitch = { vibeText, complementText, frictionText };
 
     const buildCandidate = (user) => {
       const orig = user._original || {};
@@ -289,7 +348,7 @@ class UserDashboard {
         secondImageId: orig.secondImageId || "",
         thirdImageId: orig.thirdImageId || "",
         fourthImageId: orig.fourthImageId || "",
-        matchReason: matchReason,
+        matchPitch: matchPitch,
       };
     };
 
@@ -318,7 +377,7 @@ class UserDashboard {
       console.log("Match saved:", payload);
 
       // Track in history
-      this.addMatchToHistory(userA.name, userB.name, matchReason);
+      this.addMatchToHistory(userA.name, userB.name, vibeText);
 
       // Show success animation
       this.showMatchSuccess(userA.name, userB.name);
@@ -335,8 +394,10 @@ class UserDashboard {
         confirmBtn.textContent = "💘 Suggest Match";
         confirmBtn.disabled = true;
       }
-      // Clear reason input
-      if (reasonInput) reasonInput.value = "";
+      // Clear reason inputs
+      if (vibeInput) vibeInput.value = "";
+      if (compInput) compInput.value = "";
+      if (fricInput) fricInput.value = "";
       // Hide comparison panel
       const panel = document.getElementById("matchComparisonPanel");
       if (panel) panel.style.display = "none";

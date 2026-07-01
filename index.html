@@ -220,11 +220,26 @@
         </div>
 
         <div class="match-reason-section">
-          <label class="match-reason-label" for="matchReasonInput">
-            ✍️ Match Pitch — Why should they consider each other?
-          </label>
-          <textarea id="matchReasonInput" class="match-reason-input" rows="3"
-            placeholder="e.g. Both are passionate foodies who love exploring hidden cafes. They share a love for deep conversations and weekend hikes. Their complementary personalities — one's spontaneity paired with the other's thoughtfulness — could make for an exciting dynamic."></textarea>
+          <div class="match-reason-header">
+            <label class="match-reason-label">
+              ✍️ Compatibility Breakdown
+            </label>
+            <button id="btnGeneratePitch" class="btn-generate-pitch" type="button">✨ Auto-Generate</button>
+          </div>
+          <div class="pitch-editor" id="pitchEditor">
+            <div class="pitch-field">
+              <label for="vibeTextInput">🌟 Why you'd vibe</label>
+              <textarea id="vibeTextInput" class="match-reason-input" rows="2" placeholder="Auto-generated..."></textarea>
+            </div>
+            <div class="pitch-field">
+              <label for="complementTextInput">🧩 How you complement</label>
+              <textarea id="complementTextInput" class="match-reason-input" rows="2" placeholder="Auto-generated..."></textarea>
+            </div>
+            <div class="pitch-field">
+              <label for="frictionTextInput">⚡ Potential friction</label>
+              <textarea id="frictionTextInput" class="match-reason-input" rows="2" placeholder="Auto-generated..."></textarea>
+            </div>
+          </div>
         </div>
       </div>
 
