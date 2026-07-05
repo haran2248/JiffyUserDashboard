@@ -119,9 +119,13 @@ class UserDashboard {
       panel && (panel.style.display = "none");
       barInner && barInner.classList.remove("expanded");
       bar && bar.classList.remove("expanded");
-      // Clear match reason
-      const reasonInput = document.getElementById("matchReasonInput");
-      if (reasonInput) reasonInput.value = "";
+      // Clear match reason inputs
+      const vibeInput = document.getElementById("vibeTextInput");
+      const compInput = document.getElementById("complementTextInput");
+      const fricInput = document.getElementById("frictionTextInput");
+      if (vibeInput) vibeInput.value = "";
+      if (compInput) compInput.value = "";
+      if (fricInput) fricInput.value = "";
     }
 
     this.updateMatchBar();
@@ -293,6 +297,11 @@ class UserDashboard {
 
       if (!response.ok) throw new Error("Failed to generate pitch");
       const data = await response.json();
+
+      // Check for race condition: abort if selected users changed during request
+      if (this.selectedForMatch[0] !== userA.id || this.selectedForMatch[1] !== userB.id) {
+        return;
+      }
 
       if (vibeInput) vibeInput.value = data.vibeText || "";
       if (compInput) compInput.value = data.complementText || "";
