@@ -10,11 +10,16 @@ class UserDashboard {
     this.matchMode = false;
     this.selectedForMatch = []; // max 2 user IDs
 
+    // Match history (persisted in localStorage)
+    this.matchHistory = [];
+    this.sessionMatchCount = 0;
+
     this.init();
   }
 
   async init() {
     this.showLoading(true);
+    this.loadMatchHistory();
     await this.fetchUsers();
     this.setupEventListeners();
     this.renderUsers();
@@ -98,6 +103,8 @@ class UserDashboard {
     const btn = document.getElementById("matchModeBtn");
     const grid = document.getElementById("userGrid");
     const bar = document.getElementById("matchBar");
+    const panel = document.getElementById("matchComparisonPanel");
+    const barInner = document.querySelector(".match-bar-inner");
 
     if (this.matchMode) {
       btn.textContent = "✕ Exit Match Mode";
@@ -109,6 +116,16 @@ class UserDashboard {
       btn.classList.remove("active");
       grid && grid.classList.remove("match-mode-active");
       bar && (bar.style.display = "none");
+      panel && (panel.style.display = "none");
+      barInner && barInner.classList.remove("expanded");
+      bar && bar.classList.remove("expanded");
+      // Clear match reason inputs
+      const vibeInput = document.getElementById("vibeTextInput");
+      const compInput = document.getElementById("complementTextInput");
+      const fricInput = document.getElementById("frictionTextInput");
+      if (vibeInput) vibeInput.value = "";
+      if (compInput) compInput.value = "";
+      if (fricInput) fricInput.value = "";
     }
 
     this.updateMatchBar();
@@ -141,6 +158,9 @@ class UserDashboard {
     const avatarA = document.getElementById("matchAvatarA");
     const avatarB = document.getElementById("matchAvatarB");
     const confirmBtn = document.getElementById("matchConfirmBtn");
+    const panel = document.getElementById("matchComparisonPanel");
+    const barInner = document.querySelector(".match-bar-inner");
+    const bar = document.getElementById("matchBar");
 
     const userA = this.selectedForMatch[0]
       ? this.users.find((u) => u.id === this.selectedForMatch[0])
@@ -168,6 +188,134 @@ class UserDashboard {
     }
 
     if (confirmBtn) confirmBtn.disabled = this.selectedForMatch.length < 2;
+
+    // Show/hide comparison panel
+    if (userA && userB && panel) {
+      panel.style.display = "block";
+      barInner && barInner.classList.add("expanded");
+      bar && bar.classList.add("expanded");
+      this.populateComparisonPanel(userA, userB);
+    } else if (panel) {
+      panel.style.display = "none";
+      barInner && barInner.classList.remove("expanded");
+      bar && bar.classList.remove("expanded");
+    }
+  }
+
+  populateComparisonPanel(userA, userB) {
+    const getImageUrl = (user) => user._original?.firstImageId
+      ? `${S3_CONFIG.baseUrl}${user._original.firstImageId}`
+      : this.getPlaceholderImage(user.gender);
+
+    // Photos
+    const photoA = document.getElementById("compPhotoA");
+    const photoB = document.getElementById("compPhotoB");
+    if (photoA) photoA.src = getImageUrl(userA);
+    if (photoB) photoB.src = getImageUrl(userB);
+
+    // Names
+    const nameA = document.getElementById("compNameA");
+    const nameB = document.getElementById("compNameB");
+    if (nameA) nameA.textContent = `${userA.name}${userA.age ? ', ' + userA.age : ''}`;
+    if (nameB) nameB.textContent = `${userB.name}${userB.age ? ', ' + userB.age : ''}`;
+
+    // Meta (college, looking for, preferred gender)
+    const metaA = document.getElementById("compMetaA");
+    const metaB = document.getElementById("compMetaB");
+    const buildMeta = (u) => {
+      const parts = [];
+      if (u.college && u.college !== 'Not specified') parts.push(`🎓 ${u.college}`);
+      if (u.lookingFor) parts.push(`💫 ${u.lookingFor}`);
+      if (u.gender) parts.push(u.gender);
+      return parts.join(' · ');
+    };
+    if (metaA) metaA.textContent = buildMeta(userA);
+    if (metaB) metaB.textContent = buildMeta(userB);
+
+    // Interest tags
+    const tagsA = document.getElementById("compTagsA");
+    const tagsB = document.getElementById("compTagsB");
+    const renderTags = (interests) => (interests || []).slice(0, 5)
+      .map(i => `<span class="tag">${this.escapeHtml(i)}</span>`).join('');
+    if (tagsA) tagsA.innerHTML = renderTags(userA.interests);
+    if (tagsB) tagsB.innerHTML = renderTags(userB.interests);
+
+    // Shared interests
+    const interestsA = (userA.interests || []).map(i => i.toLowerCase());
+    const interestsB = (userB.interests || []).map(i => i.toLowerCase());
+    const shared = (userA.interests || []).filter(i => interestsB.includes(i.toLowerCase()));
+
+    const sharedSection = document.getElementById("sharedInterests");
+    const sharedTags = document.getElementById("sharedTags");
+    if (shared.length > 0 && sharedSection && sharedTags) {
+      sharedSection.style.display = "flex";
+      sharedTags.innerHTML = shared.map(i =>
+        `<span class="shared-tag">${this.escapeHtml(i)}</span>`
+      ).join('');
+    } else if (sharedSection) {
+      sharedSection.style.display = "none";
+    }
+
+    // Attach event listener for Auto-Generate Pitch
+    const btnGeneratePitch = document.getElementById("btnGeneratePitch");
+    if (btnGeneratePitch) {
+      btnGeneratePitch.onclick = () => this.generatePitch(userA, userB);
+    }
+  }
+
+  async generatePitch(userA, userB) {
+    const btn = document.getElementById("btnGeneratePitch");
+    const vibeInput = document.getElementById("vibeTextInput");
+    const compInput = document.getElementById("complementTextInput");
+    const fricInput = document.getElementById("frictionTextInput");
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "✨ Generating...";
+    }
+
+    try {
+      const url = `${AI_API.baseUrl}${AI_API.endpoints.generatePitch}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          subject_user_id: userB.id,
+          viewer_user_id: userA.id,
+          subject_user_model: userB._original || {},
+          viewer_user_model: userA._original || {},
+          subject_signals: userB._original?.signalProfile || {},
+          viewer_signals: userA._original?.signalProfile || {}
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error("Failed to generate pitch");
+      const data = await response.json();
+
+      // Check for race condition: abort if selected users changed during request
+      if (this.selectedForMatch[0] !== userA.id || this.selectedForMatch[1] !== userB.id) {
+        return;
+      }
+
+      if (vibeInput) vibeInput.value = data.vibeText || "";
+      if (compInput) compInput.value = data.complementText || "";
+      if (fricInput) fricInput.value = data.frictionText || "";
+
+    } catch (error) {
+      console.error(error);
+      this.showError("Failed to generate pitch via AI.");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "✨ Auto-Generate";
+      }
+    }
   }
 
   async confirmMatch() {
@@ -175,6 +323,32 @@ class UserDashboard {
 
     const userA = this.users.find((u) => u.id === this.selectedForMatch[0]);
     const userB = this.users.find((u) => u.id === this.selectedForMatch[1]);
+
+    // Get the match pitch from the textareas
+    const vibeInput = document.getElementById("vibeTextInput");
+    const compInput = document.getElementById("complementTextInput");
+    const fricInput = document.getElementById("frictionTextInput");
+    
+    const vibeText = vibeInput ? vibeInput.value.trim() : "";
+    const complementText = compInput ? compInput.value.trim() : "";
+    const frictionText = fricInput ? fricInput.value.trim() : "";
+
+    if (!vibeText || !complementText || !frictionText) {
+      // Highlight empty ones
+      [vibeInput, compInput, fricInput].forEach(inp => {
+        if (inp && !inp.value.trim()) {
+          inp.style.borderColor = '#EF4444';
+          inp.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
+          setTimeout(() => {
+            inp.style.borderColor = '';
+            inp.style.boxShadow = '';
+          }, 3000);
+        }
+      });
+      return;
+    }
+
+    const matchPitch = { vibeText, complementText, frictionText };
 
     const buildCandidate = (user) => {
       const orig = user._original || {};
@@ -187,7 +361,7 @@ class UserDashboard {
         secondImageId: orig.secondImageId || "",
         thirdImageId: orig.thirdImageId || "",
         fourthImageId: orig.fourthImageId || "",
-        matchReason: "test",
+        matchPitch: matchPitch,
       };
     };
 
@@ -199,7 +373,7 @@ class UserDashboard {
     const confirmBtn = document.getElementById("matchConfirmBtn");
     if (confirmBtn) {
       confirmBtn.disabled = true;
-      confirmBtn.textContent = "Saving...";
+      confirmBtn.textContent = "💫 Saving...";
     }
 
     try {
@@ -214,7 +388,12 @@ class UserDashboard {
         throw new Error(`Server responded with ${response.status}`);
 
       console.log("Match saved:", payload);
-      this.showToast(`Matched ${userA.name} with ${userB.name}!`);
+
+      // Track in history
+      this.addMatchToHistory(userA.name, userB.name, vibeText);
+
+      // Show success animation
+      this.showMatchSuccess(userA.name, userB.name);
     } catch (error) {
       console.error("Failed to save match:", error);
       this.showError(`Failed to save match: ${error.message}`);
@@ -225,9 +404,20 @@ class UserDashboard {
         .querySelectorAll(".grid-card.selected")
         .forEach((c) => c.classList.remove("selected"));
       if (confirmBtn) {
-        confirmBtn.textContent = "Match!";
-        confirmBtn.disabled = false;
+        confirmBtn.textContent = "💘 Suggest Match";
+        confirmBtn.disabled = true;
       }
+      // Clear reason inputs
+      if (vibeInput) vibeInput.value = "";
+      if (compInput) compInput.value = "";
+      if (fricInput) fricInput.value = "";
+      // Hide comparison panel
+      const panel = document.getElementById("matchComparisonPanel");
+      if (panel) panel.style.display = "none";
+      const barInner = document.querySelector(".match-bar-inner");
+      if (barInner) barInner.classList.remove("expanded");
+      const bar = document.getElementById("matchBar");
+      if (bar) bar.classList.remove("expanded");
     }
   }
 
@@ -290,12 +480,17 @@ class UserDashboard {
 
     const age = user.age ? `, ${user.age}` : "";
 
+    // Determine badge content: show number (1 or 2) if selected
+    const selIdx = this.selectedForMatch.indexOf(user.id);
+    const isSelected = selIdx !== -1;
+    const badgeContent = isSelected ? (selIdx + 1) : '✓';
+
     // Extra info rows — label is first letter of field name
     const infoRows = this.buildCardInfoRows(user);
 
     return `
-      <div class="grid-card${this.selectedForMatch.includes(user.id) ? " selected" : ""}" data-user-id="${user.id}">
-        ${this.matchMode ? '<div class="card-select-badge">✓</div>' : ""}
+      <div class="grid-card${isSelected ? " selected" : ""}" data-user-id="${user.id}">
+        ${this.matchMode ? `<div class="card-select-badge">${badgeContent}</div>` : ""}
         <div class="grid-card-image-wrapper">
           <img 
             src="${imageUrl}" 
@@ -421,10 +616,30 @@ class UserDashboard {
         ${this.renderConversationStyle(curated.conversationStyleDescription)}
         ${this.renderAboutMe(curated.aboutMe)}
         ${this.renderAdditionalDetails(user, original)}
+
+        <button class="btn-select-match" data-uid="${user.id}">⚡ Select for Match</button>
       </div>
     `;
 
     document.body.appendChild(modal);
+
+    // "Select for Match" button handler
+    const selectBtn = modal.querySelector('.btn-select-match');
+    if (selectBtn) {
+      selectBtn.addEventListener('click', () => {
+        modal.remove();
+        // Enter match mode if not already
+        if (!this.matchMode) {
+          this.toggleMatchMode();
+        }
+        // Select this user
+        if (!this.selectedForMatch.includes(user.id) && this.selectedForMatch.length < 2) {
+          this.handleCardSelectForMatch(user.id);
+          // Re-render to update badge
+          this.renderUsers();
+        }
+      });
+    }
 
     modal.addEventListener("click", (e) => {
       if (
@@ -596,6 +811,7 @@ class UserDashboard {
     this.updateStatCard("activeUsers", activeUsers);
     this.updateStatCard("verifiedUsers", verifiedUsers);
     this.updateStatCard("displayedUsers", displayedUsers);
+    this.updateStatCard("matchesMade", this.matchHistory.length);
   }
 
   updateStatCard(id, value) {
@@ -650,6 +866,90 @@ class UserDashboard {
     }, 3000);
   }
 
+  // ─── Match History ──────────────────────────────────────────────────────────
+
+  loadMatchHistory() {
+    try {
+      const saved = localStorage.getItem('jiffy_match_history');
+      this.matchHistory = saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      this.matchHistory = [];
+    }
+    this.renderRecentMatches();
+  }
+
+  addMatchToHistory(nameA, nameB, reason) {
+    const entry = {
+      nameA,
+      nameB,
+      reason,
+      timestamp: new Date().toISOString(),
+    };
+    this.matchHistory.unshift(entry);
+    // Keep last 50
+    if (this.matchHistory.length > 50) this.matchHistory.pop();
+    this.sessionMatchCount++;
+
+    try {
+      localStorage.setItem('jiffy_match_history', JSON.stringify(this.matchHistory));
+    } catch (e) {
+      console.warn('Failed to save match history:', e);
+    }
+
+    this.updateStatCard('matchesMade', this.matchHistory.length);
+    this.renderRecentMatches();
+  }
+
+  renderRecentMatches() {
+    const section = document.getElementById('recentMatchesSection');
+    const list = document.getElementById('recentMatchesList');
+    if (!section || !list) return;
+
+    if (this.matchHistory.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    list.innerHTML = this.matchHistory.slice(0, 20).map(entry => {
+      const time = this.formatRelativeTime(entry.timestamp);
+      return `
+        <div class="recent-match-item">
+          <div class="match-pair">
+            <span class="person">${this.escapeHtml(entry.nameA)}</span>
+            <span class="separator">💕</span>
+            <span class="person">${this.escapeHtml(entry.nameB)}</span>
+          </div>
+          <span class="match-time">${time}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ─── Success Animation ──────────────────────────────────────────────────────
+
+  showMatchSuccess(nameA, nameB) {
+    const overlay = document.createElement('div');
+    overlay.className = 'match-success-overlay';
+    overlay.innerHTML = `
+      <div class="match-success-content">
+        <div class="match-success-emoji">💘</div>
+        <div class="match-success-text">Match Suggested!</div>
+        <div class="match-success-sub">${this.escapeHtml(nameA)} & ${this.escapeHtml(nameB)}</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', () => overlay.remove());
+    setTimeout(() => {
+      if (overlay.parentNode) {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => overlay.remove(), 500);
+      }
+    }, 2000);
+  }
+
   // ─── Utility ───────────────────────────────────────────────────────────────
 
   capitalize(str) {
@@ -692,6 +992,15 @@ let dashboardInstance = null;
 document.addEventListener("DOMContentLoaded", () => {
   dashboardInstance = new UserDashboard();
 });
+
+// ─── Recent Matches Toggle ────────────────────────────────────────────────────
+
+function toggleRecentMatches() {
+  const list = document.getElementById('recentMatchesList');
+  const toggle = document.getElementById('recentMatchesToggle');
+  if (list) list.classList.toggle('collapsed');
+  if (toggle) toggle.classList.toggle('collapsed');
+}
 
 // ─── Create User Modal Functions ──────────────────────────────────────────────
 

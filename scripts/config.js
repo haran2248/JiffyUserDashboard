@@ -41,8 +41,16 @@ const API_CONFIG = CONFIG[ENV];
 
 // Suggestions API (internal match service)
 const SUGGESTIONS_API = {
-  baseUrl: 'http://localhost:5003',
+  baseUrl: 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com',
   endpoints: {
     save: '/api/suggestions/save'
+  }
+};
+
+// AI API (Python agent for pitch generation)
+const AI_API = {
+  baseUrl: ENV === 'dev' ? 'http://localhost:8000' : 'https://jiffypythonagent-git-923840009509.asia-south1.run.app', // Update with actual prod url
+  endpoints: {
+    generatePitch: '/match/pitch/generate'
   }
 };
