@@ -541,6 +541,8 @@
   border-radius: 20px;
   border-bottom: 1px solid rgba(139, 92, 246, 0.3);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .match-bar-mini {
@@ -554,10 +556,10 @@
 /* Comparison panel */
 .match-comparison-panel {
   width: 100%;
-  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slide-up 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes slideUp {
+@keyframes slide-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -753,7 +755,7 @@
 }
 
 .match-confirm-btn:not(:disabled) {
-  animation: pulseGlow 2s ease-in-out infinite;
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .match-confirm-btn:not(:disabled):hover {
@@ -761,7 +763,7 @@
   box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5);
 }
 
-@keyframes pulseGlow {
+@keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
   50% { box-shadow: 0 0 25px rgba(236, 72, 153, 0.5), 0 0 40px rgba(139, 92, 246, 0.3); }
 }
@@ -867,20 +869,20 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   z-index: 10000;
-  animation: fadeIn 0.3s ease;
+  animation: fade-in 0.3s ease;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 .match-success-content {
   text-align: center;
-  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@keyframes popIn {
+@keyframes pop-in {
   from { transform: scale(0.5); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }

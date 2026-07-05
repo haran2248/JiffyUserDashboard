@@ -271,12 +271,14 @@ class UserDashboard {
     }
 
     try {
-      // Endpoint to JiffyPythonAgent (typically runs on 8000 or similar, adjust if needed)
-      // Let's assume there's an API config for it, or just use hardcoded localhost for now
-      const url = "http://localhost:8000/match/pitch/generate";
+      const url = `${AI_API.baseUrl}${AI_API.endpoints.generatePitch}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           subject_user_id: userB.id,
           viewer_user_id: userA.id,
@@ -286,6 +288,8 @@ class UserDashboard {
           viewer_signals: userA._original?.signalProfile || {}
         })
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) throw new Error("Failed to generate pitch");
       const data = await response.json();

@@ -46,3 +46,11 @@ const SUGGESTIONS_API = {
     save: '/api/suggestions/save'
   }
 };
+
+// AI API (Python agent for pitch generation)
+const AI_API = {
+  baseUrl: ENV === 'dev' ? 'http://localhost:8000' : 'https://jiffypythonagent-git-923840009509.asia-south1.run.app', // Update with actual prod url
+  endpoints: {
+    generatePitch: '/match/pitch/generate'
+  }
+};
