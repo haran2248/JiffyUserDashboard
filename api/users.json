@@ -11,7 +11,13 @@
     "college": "IIT Delhi",
     "location": "Delhi, India",
     "profileCompletion": 95,
-    "matchCount": 12
+    "matchCount": 12,
+    "basicDetails": {
+      "gender": "Woman"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Driven", "Playful"]
+    }
   },
   {
     "id": "usr_002",
@@ -25,7 +31,13 @@
     "college": "BITS Pilani",
     "location": "Pilani, Rajasthan",
     "profileCompletion": 88,
-    "matchCount": 8
+    "matchCount": 8,
+    "basicDetails": {
+      "gender": "Man"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Driven", "Curious"]
+    }
   },
   {
     "id": "usr_003",
@@ -39,7 +51,13 @@
     "college": "NIT Trichy",
     "location": "Trichy, Tamil Nadu",
     "profileCompletion": 72,
-    "matchCount": 5
+    "matchCount": 5,
+    "basicDetails": {
+      "gender": "Woman"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Curious", "Energetic"]
+    }
   },
   {
     "id": "usr_004",
@@ -53,7 +71,13 @@
     "college": "IIM Ahmedabad",
     "location": "Ahmedabad, Gujarat",
     "profileCompletion": 45,
-    "matchCount": 2
+    "matchCount": 2,
+    "basicDetails": {
+      "gender": "Man"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Energetic", "Playful"]
+    }
   },
   {
     "id": "usr_005",
@@ -67,7 +91,13 @@
     "college": "Delhi University",
     "location": "Delhi, India",
     "profileCompletion": 100,
-    "matchCount": 18
+    "matchCount": 18,
+    "basicDetails": {
+      "gender": "Woman"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Driven", "Energetic"]
+    }
   },
   {
     "id": "usr_006",
@@ -81,7 +111,13 @@
     "college": "IIT Bombay",
     "location": "Mumbai, Maharashtra",
     "profileCompletion": 82,
-    "matchCount": 15
+    "matchCount": 15,
+    "basicDetails": {
+      "gender": "Man"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Playful", "Driven"]
+    }
   },
   {
     "id": "usr_007",
@@ -95,7 +131,13 @@
     "college": "Anna University",
     "location": "Chennai, Tamil Nadu",
     "profileCompletion": 30,
-    "matchCount": 0
+    "matchCount": 0,
+    "basicDetails": {
+      "gender": "Woman"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Curious"]
+    }
   },
   {
     "id": "usr_008",
@@ -109,6 +151,12 @@
     "college": "XLRI Jamshedpur",
     "location": "Jamshedpur, Jharkhand",
     "profileCompletion": 91,
-    "matchCount": 10
+    "matchCount": 10,
+    "basicDetails": {
+      "gender": "Man"
+    },
+    "curatedProfile": {
+      "personalityTraits": ["Playful", "Curious"]
+    }
   }
 ]

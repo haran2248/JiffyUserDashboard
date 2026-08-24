@@ -1000,3 +1000,81 @@
     height: 20px;
   }
 }
+
+/* ========================================
+   Trait Filter Split Layout
+   ======================================== */
+.trait-filter-box {
+  display: flex;
+  align-items: center;
+}
+
+.trait-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  outline: none;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.trait-select:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.trait-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.trait-split-container {
+  display: flex;
+  gap: var(--spacing-xl);
+  width: 100%;
+}
+
+.trait-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.trait-column-title {
+  margin: 0 0 var(--spacing-lg) 0;
+  text-align: center;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  padding-bottom: var(--spacing-sm);
+}
+
+.trait-column-title.title-men {
+  color: var(--color-primary-light);
+  border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+}
+
+.trait-column-title.title-women {
+  color: var(--color-secondary-light);
+  border-bottom: 2px solid rgba(236, 72, 153, 0.3);
+}
+
+.user-grid.split-mode {
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .user-grid.split-mode {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .trait-split-container {
+    flex-direction: column;
+  }
+}

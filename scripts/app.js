@@ -14,6 +14,8 @@ class UserDashboard {
     this.matchHistory = [];
     this.sessionMatchCount = 0;
 
+    this.currentTraitFilter = "all";
+
     this.init();
   }
 
@@ -51,6 +53,8 @@ class UserDashboard {
 
       console.log(`Loaded ${this.users.length} users from backend`);
 
+      this.populateTraitDropdown();
+
       this.updateStats();
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -74,6 +78,14 @@ class UserDashboard {
         this.handleGenderFilter(e.target.dataset.gender),
       );
     });
+
+    // Trait filter
+    const traitFilter = document.getElementById("traitFilter");
+    if (traitFilter) {
+      traitFilter.addEventListener("change", (e) => 
+        this.handleTraitFilter(e.target.value)
+      );
+    }
 
     // Refresh button
     const refreshBtn = document.getElementById("refreshBtn");
@@ -436,11 +448,59 @@ class UserDashboard {
         this.currentGenderFilter === "all" ||
         user.gender === this.currentGenderFilter;
 
-      return matchesSearch && matchesGender;
+      const traits = user._original?.curatedProfile?.personalityTraits || [];
+      const matchesTrait = 
+        this.currentTraitFilter === "all" ||
+        traits.includes(this.currentTraitFilter);
+
+      return matchesSearch && matchesGender && matchesTrait;
     });
 
     this.renderUsers();
     this.updateStats();
+  }
+
+  populateTraitDropdown() {
+    const traitSelect = document.getElementById("traitFilter");
+    if (!traitSelect) return;
+
+    const traits = new Set();
+    this.users.forEach(u => {
+      const uTraits = u._original?.curatedProfile?.personalityTraits;
+      if (uTraits && Array.isArray(uTraits)) {
+        uTraits.forEach(t => traits.add(t));
+      }
+    });
+
+    const sortedTraits = Array.from(traits).sort();
+    
+    let optionsHtml = '<option value="all">All Traits</option>';
+    sortedTraits.forEach(trait => {
+      optionsHtml += `<option value="${this.escapeHtml(trait)}">${this.escapeHtml(trait)}</option>`;
+    });
+
+    traitSelect.innerHTML = optionsHtml;
+  }
+
+  handleTraitFilter(trait) {
+    this.currentTraitFilter = trait;
+    
+    const genderContainer = document.getElementById("genderToggleContainer");
+    if (genderContainer) {
+      if (trait !== "all") {
+        genderContainer.style.display = "none";
+        // Reset gender filter to all when switching to trait view
+        if (this.currentGenderFilter !== "all") {
+          this.handleGenderFilter("all");
+          return; // handleGenderFilter calls handleSearch
+        }
+      } else {
+        genderContainer.style.display = "flex";
+      }
+    }
+
+    const searchInput = document.getElementById("searchInput");
+    this.handleSearch(searchInput ? searchInput.value : "");
   }
 
   handleGenderFilter(gender) {
@@ -467,9 +527,32 @@ class UserDashboard {
       return;
     }
 
-    container.innerHTML = this.filteredUsers
-      .map((user) => this.createGridCard(user))
-      .join("");
+    if (this.currentTraitFilter && this.currentTraitFilter !== "all") {
+      const men = this.filteredUsers.filter(u => u.gender === 'Man');
+      const women = this.filteredUsers.filter(u => u.gender === 'Woman');
+
+      container.innerHTML = `
+        <div class="trait-split-container" style="grid-column: 1 / -1;">
+          <div class="trait-column">
+            <h3 class="trait-column-title title-men">Men (${men.length})</h3>
+            <div class="user-grid split-mode">
+              ${men.map(u => this.createGridCard(u)).join("")}
+            </div>
+          </div>
+          <div class="trait-column">
+            <h3 class="trait-column-title title-women">Women (${women.length})</h3>
+            <div class="user-grid split-mode">
+              ${women.map(u => this.createGridCard(u)).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      container.innerHTML = this.filteredUsers
+        .map((user) => this.createGridCard(user))
+        .join("");
+    }
+    
     this.attachUserClickListeners();
   }
 
@@ -549,6 +632,21 @@ class UserDashboard {
       rows.push(`<div class="card-info-row card-info-row--full">
         <span class="card-info-label">I</span>
         <div class="card-interests">${chips}</div>
+      </div>`);
+    }
+
+    // T: Personality Traits
+    const traits = user._original?.curatedProfile?.personalityTraits || user._original?.personalDescription?.personalityList || [];
+    if (traits.length > 0) {
+      const traitChips = traits
+        .map(
+          (t) =>
+            `<span class="card-interest-chip" style="background: rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.4);">${this.escapeHtml(t)}</span>`,
+        )
+        .join("");
+      rows.push(`<div class="card-info-row card-info-row--full">
+        <span class="card-info-label" style="color: var(--color-primary-light);">T</span>
+        <div class="card-interests">${traitChips}</div>
       </div>`);
     }
 
