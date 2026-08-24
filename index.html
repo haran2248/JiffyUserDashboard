@@ -50,7 +50,8 @@
         </div>
 
         <div class="header-actions">
-          <button id="createUserBtn" class="btn-create-user" title="Create user manually" onclick="openCreateUserModal()">
+          <button id="createUserBtn" class="btn-create-user" title="Create user manually"
+            onclick="openCreateUserModal()">
             ➕ Create User
           </button>
           <button id="refreshBtn" class="btn-icon" title="Refresh data">
@@ -124,7 +125,8 @@
         <div class="stat-card stat-card-match">
           <div class="stat-icon stat-icon-magenta">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <path
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </div>
           <div class="stat-content">
@@ -155,7 +157,12 @@
         </div>
 
         <div class="controls-right">
-          <div class="gender-toggle">
+          <div class="trait-filter-box" style="margin-right: 12px;">
+            <select id="traitFilter" class="trait-select" title="Filter by Personality Trait">
+              <option value="all">All Traits</option>
+            </select>
+          </div>
+          <div class="gender-toggle" id="genderToggleContainer">
             <button class="gender-btn active" data-gender="all">All</button>
             <button class="gender-btn" data-gender="Man">Male</button>
             <button class="gender-btn" data-gender="Woman">Female</button>
@@ -229,15 +236,18 @@
           <div class="pitch-editor" id="pitchEditor">
             <div class="pitch-field">
               <label for="vibeTextInput">🌟 Why you'd vibe</label>
-              <textarea id="vibeTextInput" class="match-reason-input" rows="2" placeholder="Auto-generated..."></textarea>
+              <textarea id="vibeTextInput" class="match-reason-input" rows="2"
+                placeholder="Auto-generated..."></textarea>
             </div>
             <div class="pitch-field">
               <label for="complementTextInput">🧩 How you complement</label>
-              <textarea id="complementTextInput" class="match-reason-input" rows="2" placeholder="Auto-generated..."></textarea>
+              <textarea id="complementTextInput" class="match-reason-input" rows="2"
+                placeholder="Auto-generated..."></textarea>
             </div>
             <div class="pitch-field">
               <label for="frictionTextInput">⚡ Potential friction</label>
-              <textarea id="frictionTextInput" class="match-reason-input" rows="2" placeholder="Auto-generated..."></textarea>
+              <textarea id="frictionTextInput" class="match-reason-input" rows="2"
+                placeholder="Auto-generated..."></textarea>
             </div>
           </div>
         </div>
@@ -570,7 +580,8 @@
               </div>
               <div class="form-row">
                 <label>Conversation Style Description</label>
-                <textarea name="conversationStyleDescription" rows="2" placeholder="You appreciate heartfelt gestures..."></textarea>
+                <textarea name="conversationStyleDescription" rows="2"
+                  placeholder="You appreciate heartfelt gestures..."></textarea>
               </div>
             </div>
           </fieldset>
@@ -581,7 +592,8 @@
             <div class="form-section-body collapsed">
               <div class="form-row">
                 <label>Questions (one per line)</label>
-                <textarea name="generatedQuestions" rows="3" placeholder="What do you value in a relationship?&#10;Share an important relationship lesson."></textarea>
+                <textarea name="generatedQuestions" rows="3"
+                  placeholder="What do you value in a relationship?&#10;Share an important relationship lesson."></textarea>
               </div>
             </div>
           </fieldset>
@@ -632,7 +644,8 @@
       <div id="jsonTab" class="create-user-tab-content">
         <div class="json-input-area">
           <label>Paste JSON (clean or MongoDB Extended JSON)</label>
-          <textarea id="jsonInput" rows="16" placeholder='Paste a user JSON document here...\n\nSupports both clean JSON and MongoDB Compass export format ($date, $numberLong, $oid).\n\nFields like fcmToken and _class will be automatically stripped.'></textarea>
+          <textarea id="jsonInput" rows="16"
+            placeholder='Paste a user JSON document here...\n\nSupports both clean JSON and MongoDB Compass export format ($date, $numberLong, $oid).\n\nFields like fcmToken and _class will be automatically stripped.'></textarea>
         </div>
         <div class="json-actions">
           <button type="button" class="btn-validate" onclick="validateJson()">✅ Validate</button>
