@@ -182,15 +182,18 @@
   <!-- Floating Match Bar -->
   <div id="matchBar" class="match-bar" style="display:none;">
     <div class="match-bar-inner">
+      <button id="closeMatchModalBtn" class="match-modal-close" aria-label="Close match comparison" title="Close comparison (Esc)">&times;</button>
       <div class="match-bar-mini">
         <div class="match-chip" id="matchChipA">
           <div class="match-chip-avatar" id="matchAvatarA"></div>
           <span class="match-chip-name" id="matchNameA">Select user 1</span>
+          <button class="chip-remove" id="chipRemoveA" title="Deselect user 1" style="display:none;">&times;</button>
         </div>
         <div class="match-vs">💕</div>
         <div class="match-chip" id="matchChipB">
           <div class="match-chip-avatar" id="matchAvatarB"></div>
           <span class="match-chip-name" id="matchNameB">Select user 2</span>
+          <button class="chip-remove" id="chipRemoveB" title="Deselect user 2" style="display:none;">&times;</button>
         </div>
       </div>
 
@@ -198,6 +201,7 @@
       <div id="matchComparisonPanel" class="match-comparison-panel" style="display:none;">
         <div class="comparison-cards">
           <div class="comparison-card" id="compCardA">
+            <button class="comp-card-remove" id="compCardRemoveA" title="Remove user 1">&times;</button>
             <img class="comparison-photo" id="compPhotoA" src="" alt="User A">
             <div class="comparison-info">
               <h3 id="compNameA">-</h3>
@@ -212,6 +216,7 @@
           </div>
 
           <div class="comparison-card" id="compCardB">
+            <button class="comp-card-remove" id="compCardRemoveB" title="Remove user 2">&times;</button>
             <img class="comparison-photo" id="compPhotoB" src="" alt="User B">
             <div class="comparison-info">
               <h3 id="compNameB">-</h3>
@@ -248,6 +253,16 @@
               <label for="frictionTextInput">⚡ Potential friction</label>
               <textarea id="frictionTextInput" class="match-reason-input" rows="2"
                 placeholder="Auto-generated..."></textarea>
+            </div>
+            <div class="pitch-field">
+              <label for="trajectoryTextInput">🚀 Trajectory (1 per line)</label>
+              <textarea id="trajectoryTextInput" class="match-reason-input" rows="3"
+                placeholder="E.g., Sunday morning routines..."></textarea>
+            </div>
+            <div class="pitch-field">
+              <label for="verdictTextInput">⚖️ The Verdict</label>
+              <textarea id="verdictTextInput" class="match-reason-input" rows="2"
+                placeholder="A punchy, bold summary..."></textarea>
             </div>
           </div>
         </div>

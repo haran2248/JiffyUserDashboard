@@ -101,15 +101,36 @@
   padding: var(--spacing-md);
 }
 
+/* Name row: name text + inline pills side by side */
+.grid-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
 .grid-card-name {
   font-size: var(--font-size-lg);
   font-weight: 700;
   color: var(--color-text-primary);
-  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 1;
 }
+
+/* Pills cluster next to name */
+.card-name-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
 
 .grid-card-college {
   font-size: var(--font-size-sm);
@@ -317,6 +338,30 @@
   white-space: nowrap;
 }
 
+.chip-remove {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+  margin-left: 2px;
+}
+
+.chip-remove:hover {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.15);
+}
+
 .match-vs {
   font-size: var(--font-size-sm);
   font-weight: 700;
@@ -517,6 +562,7 @@
 }
 
 .match-bar-inner {
+  position: relative;
   background: rgba(15, 15, 30, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -533,6 +579,38 @@
   pointer-events: all;
   box-shadow: 0 -4px 30px rgba(139, 92, 246, 0.15);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.match-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: var(--color-text-muted);
+  font-size: 22px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1;
+  padding: 0;
+  z-index: 10;
+}
+
+.match-bar-inner.expanded .match-modal-close {
+  display: flex;
+}
+
+.match-modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #EF4444;
+  transform: rotate(90deg) scale(1.1);
 }
 
 .match-bar-inner.expanded {
@@ -572,6 +650,7 @@
 }
 
 .comparison-card {
+  position: relative;
   flex: 1;
   display: flex;
   gap: var(--spacing-md);
@@ -580,6 +659,34 @@
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   transition: border-color 0.3s ease;
+}
+
+.comp-card-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+  z-index: 2;
+}
+
+.comp-card-remove:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #EF4444;
+  transform: scale(1.15);
 }
 
 .comparison-card:hover {
