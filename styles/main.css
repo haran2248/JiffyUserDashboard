@@ -1300,3 +1300,442 @@ body {
   border: 1px solid rgba(59, 130, 246, 0.3);
   color: var(--color-info);
 }
+
+/* ========================================
+   Suggestions & Conversations Panel
+   ======================================== */
+
+.suggestions-panel {
+  background: var(--color-surface);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.suggestions-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(236, 72, 153, 0.08) 100%);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.suggestions-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.suggestions-panel-icon {
+  font-size: 1.25rem;
+}
+
+.suggestions-panel-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.suggestions-total-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.suggestions-total-value {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-primary-light);
+  min-width: 2rem;
+  text-align: center;
+}
+
+.btn-load-suggestions {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.4rem 1rem;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  font-family: var(--font-family);
+}
+
+.btn-load-suggestions:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-load-suggestions:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Table */
+.suggestions-table-wrap {
+  overflow-x: auto;
+}
+
+.suggestions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.suggestions-table thead th {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sugg-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.sugg-row:hover {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.sugg-row td {
+  padding: 0.6rem var(--spacing-md);
+  vertical-align: middle;
+}
+
+.sugg-name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.sugg-gender {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Pending suggestions badges */
+.sugg-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  padding: 0 0.5rem;
+}
+
+.sugg-badge--active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(236, 72, 153, 0.3) 100%);
+  color: var(--color-primary-light);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.sugg-badge--none {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Expiry indicators */
+.sugg-expiry {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sugg-expiry--na {
+  color: var(--color-text-muted);
+}
+
+.sugg-expiry--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.sugg-expiry--soon {
+  background: rgba(245, 158, 11, 0.12);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.sugg-expiry--urgent {
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  animation: pulse-urgent 1.5s ease-in-out infinite;
+}
+
+.sugg-expiry--expired {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  text-decoration: line-through;
+}
+
+@keyframes pulse-urgent {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* Conversation count badges */
+.sugg-conv-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  padding: 0 0.5rem;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.sugg-conv-badge--zero {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Loading state */
+.suggestions-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.suggestions-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.suggestions-empty {
+  padding: var(--spacing-lg);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ========================================
+   In-card Suggestion & Conversation pills
+   ======================================== */
+
+/* S label colour */
+.card-info-label--sugg {
+  color: #A78BFA;
+}
+.card-info-label--conv {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+/* Pending count + expiry row */
+.card-sugg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+/* Pending pill */
+.card-sugg-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.card-sugg-pill--active {
+  background: rgba(139, 92, 246, 0.25);
+  color: #C4B5FD;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+}
+.card-sugg-pill--none {
+  background: rgba(255,255,255,0.05);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Expiry pill */
+.card-sugg-expiry {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.card-sugg-expiry--ok {
+  background: rgba(16,185,129,0.12);
+  color: #34D399;
+  border: 1px solid rgba(16,185,129,0.25);
+}
+.card-sugg-expiry--soon {
+  background: rgba(245,158,11,0.12);
+  color: #FBBF24;
+  border: 1px solid rgba(245,158,11,0.3);
+}
+.card-sugg-expiry--urgent {
+  background: rgba(239,68,68,0.15);
+  color: #F87171;
+  border: 1px solid rgba(239,68,68,0.35);
+  animation: pulse-urgent 1.5s ease-in-out infinite;
+}
+.card-sugg-expiry--expired {
+  background: rgba(100,116,139,0.15);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(100,116,139,0.3);
+  text-decoration: line-through;
+}
+
+/* Conversation pill */
+.card-conv-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(59,130,246,0.2);
+  color: #93C5FD;
+  border: 1px solid rgba(59,130,246,0.3);
+}
+.card-conv-pill--zero {
+  background: rgba(255,255,255,0.05);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Loading skeleton */
+.card-sugg-skeleton {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  animation: pulse-urgent 1.8s ease-in-out infinite;
+}
+
+/* Card suggestion candidate list */
+.card-sugg-container {
+  width: 100%;
+}
+.card-sugg-title-bar {
+  font-size: 0.75rem;
+  color: var(--color-primary-light);
+  margin-bottom: 4px;
+}
+.card-sugg-candidates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.card-sugg-candidate-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  background: rgba(139, 92, 246, 0.08);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+.card-sugg-candidate-name {
+  color: var(--color-text-primary);
+}
+.card-sugg-expiry-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.card-sugg-expiry-badge--ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+}
+.card-sugg-expiry-badge--soon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FBBF24;
+}
+.card-sugg-expiry-badge--urgent {
+  background: rgba(239, 68, 68, 0.18);
+  color: #F87171;
+  animation: pulse-urgent 1.5s ease-in-out infinite;
+}
+.card-sugg-expiry-badge--expired {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--color-text-muted);
+}
+.card-sugg-none {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Modal suggestion section */
+.modal-suggestions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-candidate-card {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+}
+.modal-candidate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.modal-candidate-name {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+.modal-expiry-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.modal-expiry-badge--ok { background: rgba(16, 185, 129, 0.15); color: #34D399; }
+.modal-expiry-badge--soon { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+.modal-expiry-badge--urgent { background: rgba(239, 68, 68, 0.18); color: #F87171; animation: pulse-urgent 1.5s ease-in-out infinite; }
+.modal-expiry-badge--expired { background: rgba(100, 116, 139, 0.15); color: var(--color-text-muted); }
+.modal-candidate-reason {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+
+

@@ -16,6 +16,9 @@ class UserDashboard {
 
     this.currentTraitFilter = "all";
 
+    // Suggestion + conversation data keyed by uid — populated in background after load
+    this.suggestionData = {}; // { [uid]: { pendingCount, nearestExpiry, conversations } }
+
     this.init();
   }
 
@@ -26,6 +29,8 @@ class UserDashboard {
     this.setupEventListeners();
     this.renderUsers();
     this.showLoading(false);
+    // Fetch suggestion & conversation data in the background; re-renders cards as data arrives
+    this.fetchAllSuggestionData();
   }
 
   async fetchUsers() {
@@ -104,6 +109,58 @@ class UserDashboard {
     if (matchConfirmBtn) {
       matchConfirmBtn.addEventListener("click", () => this.confirmMatch());
     }
+
+    // Close match modal (X button)
+    const closeMatchModalBtn = document.getElementById("closeMatchModalBtn");
+    if (closeMatchModalBtn) {
+      closeMatchModalBtn.addEventListener("click", () => this.closeComparisonModal());
+    }
+
+    // Individual chip remove buttons
+    const chipRemoveA = document.getElementById("chipRemoveA");
+    if (chipRemoveA) {
+      chipRemoveA.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.removeMatchUser(0);
+      });
+    }
+    const chipRemoveB = document.getElementById("chipRemoveB");
+    if (chipRemoveB) {
+      chipRemoveB.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.removeMatchUser(1);
+      });
+    }
+
+    // Individual comparison card remove buttons
+    const compCardRemoveA = document.getElementById("compCardRemoveA");
+    if (compCardRemoveA) {
+      compCardRemoveA.addEventListener("click", () => this.removeMatchUser(0));
+    }
+    const compCardRemoveB = document.getElementById("compCardRemoveB");
+    if (compCardRemoveB) {
+      compCardRemoveB.addEventListener("click", () => this.removeMatchUser(1));
+    }
+
+    // Click on matchBar backdrop to close
+    const matchBar = document.getElementById("matchBar");
+    if (matchBar) {
+      matchBar.addEventListener("click", (e) => {
+        if (e.target === matchBar && matchBar.classList.contains("expanded")) {
+          this.closeComparisonModal();
+        }
+      });
+    }
+
+    // Escape key to close match modal
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const bar = document.getElementById("matchBar");
+        if (bar && bar.classList.contains("expanded")) {
+          this.closeComparisonModal();
+        }
+      }
+    });
   }
 
   // ─── Match Mode ────────────────────────────────────────────────────────────
@@ -199,6 +256,11 @@ class UserDashboard {
       avatarB.dataset.initials = userB ? userB.name.charAt(0) : "?";
     }
 
+    const chipRemoveA = document.getElementById("chipRemoveA");
+    const chipRemoveB = document.getElementById("chipRemoveB");
+    if (chipRemoveA) chipRemoveA.style.display = userA ? "inline-flex" : "none";
+    if (chipRemoveB) chipRemoveB.style.display = userB ? "inline-flex" : "none";
+
     if (confirmBtn) confirmBtn.disabled = this.selectedForMatch.length < 2;
 
     // Show/hide comparison panel
@@ -211,6 +273,36 @@ class UserDashboard {
       panel.style.display = "none";
       barInner && barInner.classList.remove("expanded");
       bar && bar.classList.remove("expanded");
+    }
+  }
+
+  clearMatchInputs() {
+    const ids = [
+      "vibeTextInput",
+      "complementTextInput",
+      "frictionTextInput",
+      "trajectoryTextInput",
+      "verdictTextInput",
+    ];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+  }
+
+  closeComparisonModal() {
+    this.selectedForMatch = [];
+    this.clearMatchInputs();
+    this.updateMatchBar();
+    this.renderUsers();
+  }
+
+  removeMatchUser(index) {
+    if (index >= 0 && index < this.selectedForMatch.length) {
+      this.selectedForMatch.splice(index, 1);
+      this.clearMatchInputs();
+      this.updateMatchBar();
+      this.renderUsers();
     }
   }
 
@@ -315,9 +407,14 @@ class UserDashboard {
         return;
       }
 
+      const trajInput = document.getElementById("trajectoryTextInput");
+      const verdictInput = document.getElementById("verdictTextInput");
+
       if (vibeInput) vibeInput.value = data.vibeText || "";
       if (compInput) compInput.value = data.complementText || "";
       if (fricInput) fricInput.value = data.frictionText || "";
+      if (trajInput) trajInput.value = data.trajectoryOptions ? data.trajectoryOptions.join("\n") : "";
+      if (verdictInput) verdictInput.value = data.verdictText || "";
 
     } catch (error) {
       console.error(error);
@@ -340,14 +437,18 @@ class UserDashboard {
     const vibeInput = document.getElementById("vibeTextInput");
     const compInput = document.getElementById("complementTextInput");
     const fricInput = document.getElementById("frictionTextInput");
+    const trajInput = document.getElementById("trajectoryTextInput");
+    const verdictInput = document.getElementById("verdictTextInput");
     
     const vibeText = vibeInput ? vibeInput.value.trim() : "";
     const complementText = compInput ? compInput.value.trim() : "";
     const frictionText = fricInput ? fricInput.value.trim() : "";
+    const trajectoryText = trajInput ? trajInput.value.trim() : "";
+    const verdictText = verdictInput ? verdictInput.value.trim() : "";
 
-    if (!vibeText || !complementText || !frictionText) {
+    if (!vibeText || !complementText || !frictionText || !trajectoryText || !verdictText) {
       // Highlight empty ones
-      [vibeInput, compInput, fricInput].forEach(inp => {
+      [vibeInput, compInput, fricInput, trajInput, verdictInput].forEach(inp => {
         if (inp && !inp.value.trim()) {
           inp.style.borderColor = '#EF4444';
           inp.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
@@ -360,7 +461,8 @@ class UserDashboard {
       return;
     }
 
-    const matchPitch = { vibeText, complementText, frictionText };
+    const trajectoryOptions = trajectoryText.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+    const matchPitch = { vibeText, complementText, frictionText, trajectoryOptions, verdictText };
 
     const buildCandidate = (user) => {
       const orig = user._original || {};
@@ -442,7 +544,7 @@ class UserDashboard {
       const matchesSearch =
         searchTerm === "" ||
         user.name.toLowerCase().includes(searchTerm) ||
-        user.college.toLowerCase().includes(searchTerm);
+        String(user.college || "").toLowerCase().includes(searchTerm);
 
       const matchesGender =
         this.currentGenderFilter === "all" ||
@@ -561,6 +663,7 @@ class UserDashboard {
       ? `${S3_CONFIG.baseUrl}${user._original.firstImageId}`
       : this.getPlaceholderImage(user.gender);
 
+    const trimmedName = this.escapeHtml((user.name || "").trim());
     const age = user.age ? `, ${user.age}` : "";
 
     // Determine badge content: show number (1 or 2) if selected
@@ -571,19 +674,25 @@ class UserDashboard {
     // Extra info rows — label is first letter of field name
     const infoRows = this.buildCardInfoRows(user);
 
+    // Suggestion + conversation pills — shown right next to the name
+    const namePills = this._buildNamePills(user);
+
     return `
       <div class="grid-card${isSelected ? " selected" : ""}" data-user-id="${user.id}">
         ${this.matchMode ? `<div class="card-select-badge">${badgeContent}</div>` : ""}
         <div class="grid-card-image-wrapper">
           <img 
             src="${imageUrl}" 
-            alt="${this.escapeHtml(user.name)}"
+            alt="${trimmedName}"
             class="grid-card-image"
             onerror="this.src='${this.getPlaceholderImage(user.gender)}'"
           >
         </div>
         <div class="grid-card-content">
-          <div class="grid-card-name">${this.escapeHtml(user.name)}${age}</div>
+          <div class="grid-card-name-row">
+            <span class="grid-card-name">${trimmedName}${age}</span>
+            <span class="card-name-pills">${namePills}</span>
+          </div>
           <div class="grid-card-college">
             <span>🎓</span>
             <span>${this.escapeHtml(user.college)}</span>
@@ -650,6 +759,65 @@ class UserDashboard {
       </div>`);
     }
 
+    // S: Suggestions & Conversations — explicit list of suggested candidate names, ages & expiry
+    const uid = user.uid || user.id;
+    const sd = this.suggestionData[uid];
+    if (sd) {
+      if (sd.candidates && sd.candidates.length > 0) {
+        const candidateItemsHtml = sd.candidates.map(c => {
+          const diffMs = c.expiry - new Date();
+          const diffHrs = Math.floor(diffMs / 3600000);
+          const diffMin = Math.floor((diffMs % 3600000) / 60000);
+          let expClass = "ok";
+          let expText = "";
+          if (diffMs <= 0) {
+            expClass = "expired";
+            expText = "Expired";
+          } else if (diffHrs < 6) {
+            expClass = "urgent";
+            expText = diffHrs > 0 ? `${diffHrs}h ${diffMin}m` : `${diffMin}m`;
+          } else if (diffHrs < 24) {
+            expClass = "soon";
+            expText = `${diffHrs}h ${diffMin}m`;
+          } else {
+            const d = Math.floor(diffHrs / 24);
+            const h = diffHrs % 24;
+            expClass = "ok";
+            expText = `${d}d ${h}h`;
+          }
+
+          const candidateAgeStr = c.age ? `, ${this.escapeHtml(c.age)}` : "";
+          return `<div class="card-sugg-candidate-item">
+            <span class="card-sugg-candidate-name">👉 <strong>${this.escapeHtml(c.name)}</strong>${candidateAgeStr}</span>
+            <span class="card-sugg-expiry-badge card-sugg-expiry-badge--${expClass}">⏳ ${expText}</span>
+          </div>`;
+        }).join("");
+
+        rows.push(`<div class="card-info-row card-info-row--full">
+          <span class="card-info-label" style="color: #A78BFA;">S</span>
+          <div class="card-sugg-container">
+            <div class="card-sugg-title-bar">
+              <strong>${sd.pendingCount} Suggestion${sd.pendingCount > 1 ? 's' : ''}</strong>
+            </div>
+            <div class="card-sugg-candidates-list">
+              ${candidateItemsHtml}
+            </div>
+          </div>
+        </div>`);
+      } else {
+        rows.push(`<div class="card-info-row card-info-row--full">
+          <span class="card-info-label" style="color: var(--color-text-muted);">S</span>
+          <span class="card-sugg-none">0 Pending Suggestions</span>
+        </div>`);
+      }
+
+      // 💬 Conversations count
+      rows.push(`<div class="card-info-row">
+        <span class="card-info-label card-info-label--conv">💬</span>
+        <span class="card-conv-pill">${sd.conversations} Conversation${sd.conversations !== 1 ? 's' : ''}</span>
+      </div>`);
+    }
+
     if (rows.length === 0) return "";
     return `<div class="card-extra-info">${rows.join("")}</div>`;
   }
@@ -709,6 +877,7 @@ class UserDashboard {
         </h2>
 
         ${this.renderBasicInfo(user)}
+        ${this.renderSuggestionsSection(user)}
         ${this.renderPersonalityTraits(curated.personalityTraits)}
         ${this.renderInterests(curated.interests)}
         ${this.renderConversationStyle(curated.conversationStyleDescription)}
@@ -798,6 +967,60 @@ class UserDashboard {
           `
               : ""
           }
+        </div>
+      </div>
+    `;
+  }
+
+  renderSuggestionsSection(user) {
+    const uid = user.uid || user.id;
+    const sd = this.suggestionData[uid];
+    if (!sd) return "";
+
+    const candidates = sd.candidates || [];
+    const now = new Date();
+
+    const candidateCards = candidates.length > 0
+      ? candidates.map(c => {
+          const diffMs = c.expiry - now;
+          const diffHrs = Math.floor(diffMs / 3600000);
+          const diffMin = Math.floor((diffMs % 3600000) / 60000);
+          let expClass = "ok";
+          let expText = "";
+          if (diffMs <= 0) {
+            expClass = "expired";
+            expText = "Expired";
+          } else if (diffHrs < 6) {
+            expClass = "urgent";
+            expText = diffHrs > 0 ? `${diffHrs}h ${diffMin}m` : `${diffMin}m`;
+          } else if (diffHrs < 24) {
+            expClass = "soon";
+            expText = `${diffHrs}h ${diffMin}m`;
+          } else {
+            expClass = "ok";
+            expText = `${Math.floor(diffHrs / 24)}d ${diffHrs % 24}h`;
+          }
+
+          const candidateAgeStr = c.age ? `, ${this.escapeHtml(c.age)}` : "";
+          return `
+            <div class="modal-candidate-card">
+              <div class="modal-candidate-header">
+                <span class="modal-candidate-name">👉 <strong>${this.escapeHtml(c.name)}</strong>${candidateAgeStr}</span>
+                <span class="modal-expiry-badge modal-expiry-badge--${expClass}">⏳ Expires in ${expText}</span>
+              </div>
+              ${c.matchReason ? `<div class="modal-candidate-reason">💡 ${this.escapeHtml(c.matchReason)}</div>` : ""}
+            </div>
+          `;
+        }).join("")
+      : `<p style="color: var(--color-text-muted);">No pending suggestions</p>`;
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📬 Pending Suggestions (${sd.pendingCount}) &amp; Expiry
+        </div>
+        <div class="modal-suggestions-container">
+          ${candidateCards}
         </div>
       </div>
     `;
@@ -1090,6 +1313,123 @@ let dashboardInstance = null;
 document.addEventListener("DOMContentLoaded", () => {
   dashboardInstance = new UserDashboard();
 });
+
+// ─── Suggestions & Conversations (inline card data) ──────────────────────────
+
+UserDashboard.prototype.fetchAllSuggestionData = async function () {
+  const SUGGESTION_EXPIRY_MS = 72 * 60 * 60 * 1000; // 72h
+  const BASE = "https://limitless-sea-53782-2c45e56f3e92.herokuapp.com";
+
+  // Fetch all users in parallel; update cards as each result comes in
+  await Promise.allSettled(
+    this.users.map(async (user) => {
+      const uid = user.uid || user.id;
+      let pendingCount = 0;
+      let nearestExpiry = null;
+      let candidateDetails = [];
+
+      try {
+        const res = await fetch(`${BASE}/api/suggestions/${uid}`, {
+          signal: AbortSignal.timeout(10000)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const candidates = data.candidates || [];
+          pendingCount = candidates.length;
+
+          candidateDetails = candidates.map((c) => {
+            const createdAt = c.createdAt ? new Date(c.createdAt) : new Date();
+            const expiry = new Date(createdAt.getTime() + SUGGESTION_EXPIRY_MS);
+            if (!nearestExpiry || expiry < nearestExpiry) {
+              nearestExpiry = expiry;
+            }
+            return {
+              candidateUserId: c.candidateUserId,
+              name: c.name || "Candidate",
+              age: c.age || "",
+              location: c.location || "",
+              compatibilityScore: c.compatibilityScore,
+              matchReason: c.matchReason,
+              expiry: expiry
+            };
+          });
+        }
+      } catch (e) {
+        // timeout / network error — keep defaults
+      }
+
+      const conversations = user._original?.matches?.length ?? 0;
+
+      // Store candidate details and re-render card info
+      this.suggestionData[uid] = {
+        pendingCount,
+        nearestExpiry,
+        conversations,
+        candidates: candidateDetails
+      };
+      this._updateCardInPlace(uid);
+    })
+  );
+};
+
+// Update both name-row pills and card info rows
+UserDashboard.prototype._updateCardInPlace = function (uid) {
+  const card = document.querySelector(`.grid-card[data-user-id="${uid}"]`);
+  if (!card) return;
+  const user = this.users.find((u) => (u.uid || u.id) === uid);
+  if (!user) return;
+
+  const pillsSpan = card.querySelector(".card-name-pills");
+  if (pillsSpan) pillsSpan.innerHTML = this._buildNamePills(user);
+
+  const existingExtraInfo = card.querySelector(".card-extra-info");
+  const newExtraHtml = this.buildCardInfoRows(user);
+  if (existingExtraInfo) {
+    existingExtraInfo.outerHTML = newExtraHtml;
+  } else {
+    const content = card.querySelector(".grid-card-content");
+    if (content) content.insertAdjacentHTML("beforeend", newExtraHtml);
+  }
+};
+
+// Build the compact pills shown adjacent to the user's name
+UserDashboard.prototype._buildNamePills = function (user) {
+  const uid = user.uid || user.id;
+  const sd = this.suggestionData[uid];
+  if (!sd) return "";
+
+  const parts = [];
+
+  // Pending count badge
+  parts.push(sd.pendingCount > 0
+    ? `<span class="card-sugg-pill card-sugg-pill--active">${sd.pendingCount} 📬</span>`
+    : `<span class="card-sugg-pill card-sugg-pill--none">0 📬</span>`);
+
+  // Expiry badge (only when there are pending suggestions)
+  if (sd.pendingCount > 0 && sd.nearestExpiry) {
+    const diffMs  = sd.nearestExpiry - new Date();
+    const diffHrs = Math.floor(diffMs / 3600000);
+    const diffMin = Math.floor((diffMs % 3600000) / 60000);
+    if (diffMs <= 0) {
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--expired">exp.</span>`);
+    } else if (diffHrs < 6) {
+      const t = diffHrs > 0 ? `${diffHrs}h` : `${diffMin}m`;
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--urgent">⚠ ${t}</span>`);
+    } else if (diffHrs < 24) {
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--soon">${diffHrs}h</span>`);
+    } else {
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--ok">${Math.floor(diffHrs/24)}d</span>`);
+    }
+  }
+
+  // Conversations badge
+  parts.push(sd.conversations > 0
+    ? `<span class="card-conv-pill">${sd.conversations} 💬</span>`
+    : `<span class="card-conv-pill card-conv-pill--zero">0 💬</span>`);
+
+  return parts.join("");
+};
+
 
 // ─── Recent Matches Toggle ────────────────────────────────────────────────────
 
