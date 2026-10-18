@@ -231,6 +231,24 @@
           <div class="shared-tags" id="sharedTags"></div>
         </div>
 
+        <!-- One-Way Suggestion Direction Selector -->
+        <div class="suggestion-direction-selector" id="suggestionDirectionSelector">
+          <span class="direction-title">🎯 Suggestion Delivery (One-Way):</span>
+          <div class="direction-switch">
+            <button type="button" class="direction-btn active" id="btnDirAtoB">
+              <span class="dir-icon">👉</span>
+              <span>Deliver to <strong id="dirRecipientA">User 1</strong> (views <strong id="dirCandidateB">User 2</strong>)</span>
+            </button>
+            <button type="button" class="btn-swap-dir" id="btnSwapDirection" title="Swap direction">
+              ⇄ Swap Flow
+            </button>
+            <button type="button" class="direction-btn" id="btnDirBtoA">
+              <span class="dir-icon">👉</span>
+              <span>Deliver to <strong id="dirRecipientB">User 2</strong> (views <strong id="dirCandidateA">User 1</strong>)</span>
+            </button>
+          </div>
+        </div>
+
         <div class="match-reason-section">
           <div class="match-reason-header">
             <label class="match-reason-label">

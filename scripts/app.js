@@ -9,6 +9,7 @@ class UserDashboard {
     // Match mode state
     this.matchMode = false;
     this.selectedForMatch = []; // max 2 user IDs
+    this.matchDirection = "A_TO_B"; // "A_TO_B" = deliver to userA; "B_TO_A" = deliver to userB
 
     // Match history (persisted in localStorage)
     this.matchHistory = [];
@@ -360,10 +361,64 @@ class UserDashboard {
       sharedSection.style.display = "none";
     }
 
+    // One-Way Direction selector wiring
+    const btnDirAtoB = document.getElementById("btnDirAtoB");
+    const btnDirBtoA = document.getElementById("btnDirBtoA");
+    const btnSwapDirection = document.getElementById("btnSwapDirection");
+    const dirRecipientA = document.getElementById("dirRecipientA");
+    const dirCandidateB = document.getElementById("dirCandidateB");
+    const dirRecipientB = document.getElementById("dirRecipientB");
+    const dirCandidateA = document.getElementById("dirCandidateA");
+
+    if (dirRecipientA) dirRecipientA.textContent = userA.name;
+    if (dirCandidateB) dirCandidateB.textContent = userB.name;
+    if (dirRecipientB) dirRecipientB.textContent = userB.name;
+    if (dirCandidateA) dirCandidateA.textContent = userA.name;
+
+    const updateDirectionUI = () => {
+      const isAtoB = this.matchDirection === "A_TO_B";
+      if (btnDirAtoB) btnDirAtoB.classList.toggle("active", isAtoB);
+      if (btnDirBtoA) btnDirBtoA.classList.toggle("active", !isAtoB);
+
+      const confirmBtn = document.getElementById("matchConfirmBtn");
+      if (confirmBtn) {
+        const viewer = isAtoB ? userA : userB;
+        const candidate = isAtoB ? userB : userA;
+        confirmBtn.textContent = `💘 Suggest ${candidate.name} to ${viewer.name}`;
+      }
+    };
+
+    updateDirectionUI();
+
+    if (btnDirAtoB) {
+      btnDirAtoB.onclick = () => {
+        this.matchDirection = "A_TO_B";
+        updateDirectionUI();
+      };
+    }
+
+    if (btnDirBtoA) {
+      btnDirBtoA.onclick = () => {
+        this.matchDirection = "B_TO_A";
+        updateDirectionUI();
+      };
+    }
+
+    if (btnSwapDirection) {
+      btnSwapDirection.onclick = () => {
+        this.matchDirection = this.matchDirection === "A_TO_B" ? "B_TO_A" : "A_TO_B";
+        updateDirectionUI();
+      };
+    }
+
     // Attach event listener for Auto-Generate Pitch
     const btnGeneratePitch = document.getElementById("btnGeneratePitch");
     if (btnGeneratePitch) {
-      btnGeneratePitch.onclick = () => this.generatePitch(userA, userB);
+      btnGeneratePitch.onclick = () => {
+        const viewer = this.matchDirection === "A_TO_B" ? userA : userB;
+        const candidate = this.matchDirection === "A_TO_B" ? userB : userA;
+        this.generatePitch(viewer, candidate);
+      };
     }
   }
 
@@ -485,9 +540,13 @@ class UserDashboard {
       };
     };
 
+    const isAtoB = this.matchDirection === "A_TO_B";
+    const viewer = isAtoB ? userA : userB;
+    const candidate = isAtoB ? userB : userA;
+
     const payload = {
-      candidate1: buildCandidate(userA),
-      candidate2: buildCandidate(userB),
+      candidate1: buildCandidate(viewer),
+      candidate2: buildCandidate(candidate),
     };
 
     const confirmBtn = document.getElementById("matchConfirmBtn");
@@ -510,10 +569,10 @@ class UserDashboard {
       console.log("Match saved:", payload);
 
       // Track in history
-      this.addMatchToHistory(userA.name, userB.name, vibeText);
+      this.addMatchToHistory(viewer.name, candidate.name, vibeText);
 
       // Show success animation
-      this.showMatchSuccess(userA.name, userB.name);
+      this.showMatchSuccess(candidate.name, viewer.name);
     } catch (error) {
       console.error("Failed to save match:", error);
       this.showError(`Failed to save match: ${error.message}`);
