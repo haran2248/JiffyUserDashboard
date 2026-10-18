@@ -390,10 +390,10 @@ class UserDashboard {
         body: JSON.stringify({
           subject_user_id: userB.id,
           viewer_user_id: userA.id,
-          subject_user_model: userB._original || {},
-          viewer_user_model: userA._original || {},
-          subject_signals: userB._original?.signalProfile || {},
-          viewer_signals: userA._original?.signalProfile || {}
+          subject_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userB) : (userB._original || {}),
+          viewer_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userA) : (userA._original || {}),
+          subject_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userB) : (userB._original?.signalProfile || {}),
+          viewer_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userA) : (userA._original?.signalProfile || {})
         })
       });
 
@@ -466,15 +466,21 @@ class UserDashboard {
 
     const buildCandidate = (user) => {
       const orig = user._original || {};
+      const photos = user.photos || [];
+      const getImg = (slot, directId) => {
+        const p = photos.find(x => x.slot === slot);
+        return p ? p.id : (directId || "");
+      };
+
       return {
         candidateUserId: user.uid || user.id,
         name: user.name,
         age: user.age ? String(user.age) : "",
         location: user.location || "",
-        imageId: orig.firstImageId || "",
-        secondImageId: orig.secondImageId || "",
-        thirdImageId: orig.thirdImageId || "",
-        fourthImageId: orig.fourthImageId || "",
+        imageId: getImg(1, orig.firstImageId),
+        secondImageId: getImg(2, orig.secondImageId),
+        thirdImageId: getImg(3, orig.thirdImageId),
+        fourthImageId: getImg(4, orig.fourthImageId),
         matchPitch: matchPitch,
       };
     };
@@ -722,6 +728,14 @@ class UserDashboard {
       </div>`);
     }
 
+    // W: Work / Profession
+    if (user.work) {
+      rows.push(`<div class="card-info-row card-info-row--full">
+        <span class="card-info-label" style="color: #60A5FA;">W</span>
+        <span class="card-info-pill" style="max-width: 100%; white-space: normal; height: auto;">${this.escapeHtml(user.work)}</span>
+      </div>`);
+    }
+
     // C: Conversation style (truncated)
     if (user.conversationStyle) {
       rows.push(`<div class="card-info-row card-info-row--full">
@@ -876,12 +890,16 @@ class UserDashboard {
           ${this.escapeHtml(user.name)}${user.age ? `, ${user.age}` : ""}
         </h2>
 
+        ${this.renderPhotosGallery(user)}
         ${this.renderBasicInfo(user)}
+        ${this.renderSignalProfile(user)}
+        ${this.renderMatchingProfile(user)}
+        ${this.renderPromptsSection(user)}
         ${this.renderSuggestionsSection(user)}
-        ${this.renderPersonalityTraits(curated.personalityTraits)}
-        ${this.renderInterests(curated.interests)}
-        ${this.renderConversationStyle(curated.conversationStyleDescription)}
-        ${this.renderAboutMe(curated.aboutMe)}
+        ${this.renderPersonalityTraits(curated.personalityTraits || user.personalityTraits)}
+        ${this.renderInterests(curated.interests || user.interests)}
+        ${this.renderConversationStyle(curated.conversationStyleDescription || user.conversationStyle)}
+        ${this.renderAboutMe(curated.aboutMe || user.aboutMe)}
         ${this.renderAdditionalDetails(user, original)}
 
         <button class="btn-select-match" data-uid="${user.id}">⚡ Select for Match</button>
@@ -889,6 +907,19 @@ class UserDashboard {
     `;
 
     document.body.appendChild(modal);
+
+    // Thumbnail click to swap hero photo
+    const thumbs = modal.querySelectorAll('.modal-photo-img');
+    const heroImg = modal.querySelector('.modal-profile-image');
+    if (heroImg && thumbs.length > 0) {
+      thumbs.forEach((t) => {
+        t.style.cursor = 'pointer';
+        t.title = 'Click to preview';
+        t.addEventListener('click', () => {
+          heroImg.src = t.src;
+        });
+      });
+    }
 
     // "Select for Match" button handler
     const selectBtn = modal.querySelector('.btn-select-match');
@@ -918,6 +949,32 @@ class UserDashboard {
     });
   }
 
+  renderPhotosGallery(user) {
+    const photos = user.photos || [];
+    if (!photos || photos.length === 0) return "";
+
+    const items = photos.map((p) => {
+      const url = p.id ? `${S3_CONFIG.baseUrl}${p.id}` : this.getPlaceholderImage(user.gender);
+      return `
+        <div class="modal-photo-thumb">
+          <img src="${url}" alt="Photo ${p.slot}" class="modal-photo-img" onerror="this.src='${this.getPlaceholderImage(user.gender)}'" />
+          <span class="modal-photo-slot">Slot ${p.slot}</span>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📸 Uploaded Photos (${photos.length})
+        </div>
+        <div class="modal-photos-gallery">
+          ${items}
+        </div>
+      </div>
+    `;
+  }
+
   renderBasicInfo(user) {
     return `
       <div class="modal-section">
@@ -937,6 +994,36 @@ class UserDashboard {
             <span class="detail-label">College:</span>
             <span class="detail-value">${this.escapeHtml(user.college)}</span>
           </div>
+          ${
+            user.work
+              ? `
+          <div class="detail-row">
+            <span class="detail-label">Work:</span>
+            <span class="detail-value">${this.escapeHtml(user.work)}</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            user.height
+              ? `
+          <div class="detail-row">
+            <span class="detail-label">Height:</span>
+            <span class="detail-value">${this.escapeHtml(user.height)} cm</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            user.location && user.location !== "Location not set"
+              ? `
+          <div class="detail-row">
+            <span class="detail-label">Location:</span>
+            <span class="detail-value">${this.escapeHtml(user.location)}</span>
+          </div>
+          `
+              : ""
+          }
           ${
             user.gender
               ? `
@@ -967,6 +1054,178 @@ class UserDashboard {
           `
               : ""
           }
+        </div>
+      </div>
+    `;
+  }
+
+  renderSignalProfile(user) {
+    const sp = user.signalProfile;
+    if (!sp || typeof sp !== "object") return "";
+
+    const scoredFields = [
+      { key: "ambitionDrive", label: "Ambition & Drive" },
+      { key: "emotionalAvailability", label: "Emotional Availability" },
+      { key: "socialEnergy", label: "Social Energy" },
+      { key: "lifePace", label: "Life Pace" },
+      { key: "relationshipPace", label: "Relationship Pace" },
+      { key: "authenticityScore", label: "Authenticity" },
+    ];
+
+    const scoredHtml = scoredFields
+      .filter((f) => sp[f.key] !== undefined && sp[f.key] !== null)
+      .map((f) => {
+        const val = Number(sp[f.key]);
+        const pct = Math.round(val <= 1 ? val * 100 : val);
+        return `
+          <div class="signal-metric-box">
+            <div class="signal-metric-row">
+              <span>${f.label}</span>
+              <span>${pct}%</span>
+            </div>
+            <div class="signal-meter">
+              <div class="signal-meter-fill" style="width: ${pct}%;"></div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const proseFields = [
+      { key: "toneSignature", title: "Tone Signature", icon: "🎙️" },
+      { key: "lifeEnergy", title: "Life Energy", icon: "⚡" },
+      { key: "lifestyleTexture", title: "Lifestyle Texture", icon: "☕" },
+      { key: "selfPitch", title: "Self Pitch", icon: "💬" },
+      { key: "journeyNarrative", title: "Journey Narrative", icon: "🧭" },
+    ];
+
+    const proseHtml = proseFields
+      .filter((f) => sp[f.key])
+      .map((f) => `
+        <div class="signal-card">
+          <div class="signal-card-title">${f.icon} ${f.title}</div>
+          <div class="signal-card-text">${this.escapeHtml(sp[f.key])}</div>
+        </div>
+      `)
+      .join("");
+
+    const metaTags = [];
+    if (sp.relationshipIntent) {
+      metaTags.push(`<span class="tier-badge" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #93C5FD;">Intent: ${this.escapeHtml(sp.relationshipIntent)}</span>`);
+    }
+    if (sp.confidence) {
+      metaTags.push(`<span class="tier-badge" style="background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.4); color: #C4B5FD;">Confidence: ${this.escapeHtml(sp.confidence)}</span>`);
+    }
+    if (sp.city) {
+      metaTags.push(`<span class="tier-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6EE7B7;">City: ${this.escapeHtml(sp.city)}</span>`);
+    }
+
+    if (!scoredHtml && !proseHtml && metaTags.length === 0) return "";
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          🧠 AI Signal Profile
+        </div>
+        ${metaTags.length > 0 ? `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--spacing-md);">${metaTags.join("")}</div>` : ""}
+        ${scoredHtml ? `<div class="signal-profile-grid" style="margin-bottom: var(--spacing-md);">${scoredHtml}</div>` : ""}
+        ${proseHtml ? `<div class="signal-profile-grid">${proseHtml}</div>` : ""}
+      </div>
+    `;
+  }
+
+  renderMatchingProfile(user) {
+    const mp = user.matchingProfile;
+    if (!mp || typeof mp !== "object") return "";
+
+    const items = [];
+    if (mp.attractivenessTier !== undefined && mp.attractivenessTier !== null) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">⭐ Attractiveness Tier</div>
+          <div class="signal-card-text"><span class="tier-badge">Tier ${this.escapeHtml(mp.attractivenessTier)}</span></div>
+        </div>
+      `);
+    }
+    if (mp.vibeSummary) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">✨ Vibe Summary</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.vibeSummary)}</div>
+        </div>
+      `);
+    }
+    if (mp.energy) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">⚡ Energy</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.energy)}</div>
+        </div>
+      `);
+    }
+    if (mp.depthPreference) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">🌊 Depth Preference</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.depthPreference)}</div>
+        </div>
+      `);
+    }
+    if (mp.communicationStyle) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">🗣️ Communication Style</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.communicationStyle)}</div>
+        </div>
+      `);
+    }
+
+    if (items.length === 0) return "";
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          🎯 AI Matching Profile
+        </div>
+        <div class="signal-profile-grid">
+          ${items.join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  renderPromptsSection(user) {
+    const prompts = user.prompts;
+    if (!prompts) return "";
+
+    let promptEntries = [];
+    if (Array.isArray(prompts)) {
+      promptEntries = prompts.map((p) => ({
+        q: p.question || p.prompt || p.title,
+        a: p.answer || p.response || p.text,
+      })).filter((p) => p.q && p.a);
+    } else if (typeof prompts === "object") {
+      promptEntries = Object.entries(prompts)
+        .map(([q, a]) => ({ q, a }))
+        .filter((p) => p.q && p.a);
+    }
+
+    if (promptEntries.length === 0) return "";
+
+    const bubbles = promptEntries.map((p) => `
+      <div class="prompt-bubble">
+        <div class="prompt-question">❓ ${this.escapeHtml(p.q)}</div>
+        <div class="prompt-answer">${this.escapeHtml(p.a)}</div>
+      </div>
+    `).join("");
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          💬 Profile Prompts &amp; Q&amp;A
+        </div>
+        <div>
+          ${bubbles}
         </div>
       </div>
     `;
