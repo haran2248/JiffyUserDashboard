@@ -9,12 +9,16 @@ class UserDashboard {
     // Match mode state
     this.matchMode = false;
     this.selectedForMatch = []; // max 2 user IDs
+    this.matchDirection = "A_TO_B"; // "A_TO_B" = deliver to userA; "B_TO_A" = deliver to userB
 
     // Match history (persisted in localStorage)
     this.matchHistory = [];
     this.sessionMatchCount = 0;
 
     this.currentTraitFilter = "all";
+
+    // Suggestion + conversation data keyed by uid — populated in background after load
+    this.suggestionData = {}; // { [uid]: { pendingCount, nearestExpiry, conversations } }
 
     this.init();
   }
@@ -26,6 +30,8 @@ class UserDashboard {
     this.setupEventListeners();
     this.renderUsers();
     this.showLoading(false);
+    // Fetch suggestion & conversation data in the background; re-renders cards as data arrives
+    this.fetchAllSuggestionData();
   }
 
   async fetchUsers() {
@@ -104,6 +110,58 @@ class UserDashboard {
     if (matchConfirmBtn) {
       matchConfirmBtn.addEventListener("click", () => this.confirmMatch());
     }
+
+    // Close match modal (X button)
+    const closeMatchModalBtn = document.getElementById("closeMatchModalBtn");
+    if (closeMatchModalBtn) {
+      closeMatchModalBtn.addEventListener("click", () => this.closeComparisonModal());
+    }
+
+    // Individual chip remove buttons
+    const chipRemoveA = document.getElementById("chipRemoveA");
+    if (chipRemoveA) {
+      chipRemoveA.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.removeMatchUser(0);
+      });
+    }
+    const chipRemoveB = document.getElementById("chipRemoveB");
+    if (chipRemoveB) {
+      chipRemoveB.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.removeMatchUser(1);
+      });
+    }
+
+    // Individual comparison card remove buttons
+    const compCardRemoveA = document.getElementById("compCardRemoveA");
+    if (compCardRemoveA) {
+      compCardRemoveA.addEventListener("click", () => this.removeMatchUser(0));
+    }
+    const compCardRemoveB = document.getElementById("compCardRemoveB");
+    if (compCardRemoveB) {
+      compCardRemoveB.addEventListener("click", () => this.removeMatchUser(1));
+    }
+
+    // Click on matchBar backdrop to close
+    const matchBar = document.getElementById("matchBar");
+    if (matchBar) {
+      matchBar.addEventListener("click", (e) => {
+        if (e.target === matchBar && matchBar.classList.contains("expanded")) {
+          this.closeComparisonModal();
+        }
+      });
+    }
+
+    // Escape key to close match modal
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const bar = document.getElementById("matchBar");
+        if (bar && bar.classList.contains("expanded")) {
+          this.closeComparisonModal();
+        }
+      }
+    });
   }
 
   // ─── Match Mode ────────────────────────────────────────────────────────────
@@ -199,6 +257,11 @@ class UserDashboard {
       avatarB.dataset.initials = userB ? userB.name.charAt(0) : "?";
     }
 
+    const chipRemoveA = document.getElementById("chipRemoveA");
+    const chipRemoveB = document.getElementById("chipRemoveB");
+    if (chipRemoveA) chipRemoveA.style.display = userA ? "inline-flex" : "none";
+    if (chipRemoveB) chipRemoveB.style.display = userB ? "inline-flex" : "none";
+
     if (confirmBtn) confirmBtn.disabled = this.selectedForMatch.length < 2;
 
     // Show/hide comparison panel
@@ -211,6 +274,36 @@ class UserDashboard {
       panel.style.display = "none";
       barInner && barInner.classList.remove("expanded");
       bar && bar.classList.remove("expanded");
+    }
+  }
+
+  clearMatchInputs() {
+    const ids = [
+      "vibeTextInput",
+      "complementTextInput",
+      "frictionTextInput",
+      "trajectoryTextInput",
+      "verdictTextInput",
+    ];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+  }
+
+  closeComparisonModal() {
+    this.selectedForMatch = [];
+    this.clearMatchInputs();
+    this.updateMatchBar();
+    this.renderUsers();
+  }
+
+  removeMatchUser(index) {
+    if (index >= 0 && index < this.selectedForMatch.length) {
+      this.selectedForMatch.splice(index, 1);
+      this.clearMatchInputs();
+      this.updateMatchBar();
+      this.renderUsers();
     }
   }
 
@@ -268,10 +361,64 @@ class UserDashboard {
       sharedSection.style.display = "none";
     }
 
+    // One-Way Direction selector wiring
+    const btnDirAtoB = document.getElementById("btnDirAtoB");
+    const btnDirBtoA = document.getElementById("btnDirBtoA");
+    const btnSwapDirection = document.getElementById("btnSwapDirection");
+    const dirRecipientA = document.getElementById("dirRecipientA");
+    const dirCandidateB = document.getElementById("dirCandidateB");
+    const dirRecipientB = document.getElementById("dirRecipientB");
+    const dirCandidateA = document.getElementById("dirCandidateA");
+
+    if (dirRecipientA) dirRecipientA.textContent = userA.name;
+    if (dirCandidateB) dirCandidateB.textContent = userB.name;
+    if (dirRecipientB) dirRecipientB.textContent = userB.name;
+    if (dirCandidateA) dirCandidateA.textContent = userA.name;
+
+    const updateDirectionUI = () => {
+      const isAtoB = this.matchDirection === "A_TO_B";
+      if (btnDirAtoB) btnDirAtoB.classList.toggle("active", isAtoB);
+      if (btnDirBtoA) btnDirBtoA.classList.toggle("active", !isAtoB);
+
+      const confirmBtn = document.getElementById("matchConfirmBtn");
+      if (confirmBtn) {
+        const viewer = isAtoB ? userA : userB;
+        const candidate = isAtoB ? userB : userA;
+        confirmBtn.textContent = `💘 Suggest ${candidate.name} to ${viewer.name}`;
+      }
+    };
+
+    updateDirectionUI();
+
+    if (btnDirAtoB) {
+      btnDirAtoB.onclick = () => {
+        this.matchDirection = "A_TO_B";
+        updateDirectionUI();
+      };
+    }
+
+    if (btnDirBtoA) {
+      btnDirBtoA.onclick = () => {
+        this.matchDirection = "B_TO_A";
+        updateDirectionUI();
+      };
+    }
+
+    if (btnSwapDirection) {
+      btnSwapDirection.onclick = () => {
+        this.matchDirection = this.matchDirection === "A_TO_B" ? "B_TO_A" : "A_TO_B";
+        updateDirectionUI();
+      };
+    }
+
     // Attach event listener for Auto-Generate Pitch
     const btnGeneratePitch = document.getElementById("btnGeneratePitch");
     if (btnGeneratePitch) {
-      btnGeneratePitch.onclick = () => this.generatePitch(userA, userB);
+      btnGeneratePitch.onclick = () => {
+        const viewer = this.matchDirection === "A_TO_B" ? userA : userB;
+        const candidate = this.matchDirection === "A_TO_B" ? userB : userA;
+        this.generatePitch(viewer, candidate);
+      };
     }
   }
 
@@ -280,48 +427,105 @@ class UserDashboard {
     const vibeInput = document.getElementById("vibeTextInput");
     const compInput = document.getElementById("complementTextInput");
     const fricInput = document.getElementById("frictionTextInput");
+    const trajInput = document.getElementById("trajectoryTextInput");
+    const verdictInput = document.getElementById("verdictTextInput");
+
+    const endpointUrl = `${AI_API.baseUrl}${AI_API.endpoints.generatePitch}`;
+    console.log(`[Pitch Generation] Starting auto-generate pitch:`, {
+      viewer: { id: userA?.id, name: userA?.name },
+      candidate: { id: userB?.id, name: userB?.name },
+      direction: this.matchDirection,
+      endpoint: endpointUrl
+    });
 
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "✨ Generating...";
+      btn.textContent = "✨ Generating (AI running)...";
     }
 
     try {
-      const url = `${AI_API.baseUrl}${AI_API.endpoints.generatePitch}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for AI generation
 
-      const response = await fetch(url, {
+      const payload = {
+        subject_user_id: userB.id,
+        viewer_user_id: userA.id,
+        subject_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userB) : (userB._original || {}),
+        viewer_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userA) : (userA._original || {}),
+        subject_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userB) : (userB._original?.signalProfile || {}),
+        viewer_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userA) : (userA._original?.signalProfile || {})
+      };
+
+      console.log(`[Pitch Generation] Sending POST request to ${endpointUrl} with payload:`, payload);
+
+      const response = await fetch(endpointUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          subject_user_id: userB.id,
-          viewer_user_id: userA.id,
-          subject_user_model: userB._original || {},
-          viewer_user_model: userA._original || {},
-          subject_signals: userB._original?.signalProfile || {},
-          viewer_signals: userA._original?.signalProfile || {}
-        })
+        body: JSON.stringify(payload)
       });
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) throw new Error("Failed to generate pitch");
-      const data = await response.json();
+      console.log(`[Pitch Generation] HTTP Response: ${response.status} ${response.statusText}`);
 
-      // Check for race condition: abort if selected users changed during request
-      if (this.selectedForMatch[0] !== userA.id || this.selectedForMatch[1] !== userB.id) {
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const errorJson = await response.json();
+          errorDetail = errorJson.detail || JSON.stringify(errorJson);
+        } catch (_) {
+          errorDetail = await response.text();
+        }
+        throw new Error(`Server ${response.status}: ${errorDetail || response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("[Pitch Generation] Received pitch data successfully:", data);
+
+      // Check if selected users changed during request
+      if (!this.selectedForMatch.includes(userA.id) || !this.selectedForMatch.includes(userB.id)) {
+        console.warn("[Pitch Generation] Discarding result because selected users changed during request:", {
+          currentSelected: this.selectedForMatch,
+          requestedA: userA.id,
+          requestedB: userB.id
+        });
         return;
       }
 
-      if (vibeInput) vibeInput.value = data.vibeText || "";
-      if (compInput) compInput.value = data.complementText || "";
-      if (fricInput) fricInput.value = data.frictionText || "";
+      const inputs = [
+        { el: vibeInput, val: data.vibeText || "", name: "vibeTextInput" },
+        { el: compInput, val: data.complementText || "", name: "complementTextInput" },
+        { el: fricInput, val: data.frictionText || "", name: "frictionTextInput" },
+        { el: trajInput, val: data.trajectoryOptions ? (Array.isArray(data.trajectoryOptions) ? data.trajectoryOptions.join("\n") : data.trajectoryOptions) : "", name: "trajectoryTextInput" },
+        { el: verdictInput, val: data.verdictText || "", name: "verdictTextInput" }
+      ];
+
+      inputs.forEach(({ el, val, name }) => {
+        if (el) {
+          el.value = val;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          // Visual highlight animation
+          el.style.transition = "background-color 0.4s ease";
+          el.style.backgroundColor = "rgba(16, 185, 129, 0.2)";
+          setTimeout(() => {
+            el.style.backgroundColor = "";
+          }, 1200);
+        } else {
+          console.warn(`[Pitch Generation] DOM element #${name} not found!`);
+        }
+      });
+
+      this.showToast("✨ AI Pitch generated and populated!");
 
     } catch (error) {
-      console.error(error);
-      this.showError("Failed to generate pitch via AI.");
+      console.error("[Pitch Generation Error]:", error);
+      const isTimeout = error.name === "AbortError";
+      const message = isTimeout
+        ? "AI pitch generation timed out after 45s. Please check backend status."
+        : `Failed to generate pitch via AI: ${error.message}`;
+      this.showError(message);
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -331,23 +535,46 @@ class UserDashboard {
   }
 
   async confirmMatch() {
-    if (this.selectedForMatch.length < 2) return;
+    if (this.selectedForMatch.length < 2) {
+      console.warn("[Match Suggestion] Cannot confirm match: less than 2 users selected.");
+      this.showError("Please select 2 users to match.");
+      return;
+    }
 
     const userA = this.users.find((u) => u.id === this.selectedForMatch[0]);
     const userB = this.users.find((u) => u.id === this.selectedForMatch[1]);
+
+    if (!userA || !userB) {
+      console.error("[Match Suggestion] Could not find user objects for IDs:", this.selectedForMatch);
+      this.showError("Selected users could not be found in user list.");
+      return;
+    }
 
     // Get the match pitch from the textareas
     const vibeInput = document.getElementById("vibeTextInput");
     const compInput = document.getElementById("complementTextInput");
     const fricInput = document.getElementById("frictionTextInput");
+    const trajInput = document.getElementById("trajectoryTextInput");
+    const verdictInput = document.getElementById("verdictTextInput");
     
     const vibeText = vibeInput ? vibeInput.value.trim() : "";
     const complementText = compInput ? compInput.value.trim() : "";
     const frictionText = fricInput ? fricInput.value.trim() : "";
+    const trajectoryText = trajInput ? trajInput.value.trim() : "";
+    const verdictText = verdictInput ? verdictInput.value.trim() : "";
 
-    if (!vibeText || !complementText || !frictionText) {
+    if (!vibeText || !complementText || !frictionText || !trajectoryText || !verdictText) {
+      console.warn("[Match Suggestion] Validation failed: Some pitch fields are empty", {
+        vibeText: Boolean(vibeText),
+        complementText: Boolean(complementText),
+        frictionText: Boolean(frictionText),
+        trajectoryText: Boolean(trajectoryText),
+        verdictText: Boolean(verdictText)
+      });
+      this.showError("Please fill in or auto-generate all 5 compatibility fields before suggesting a match.");
+
       // Highlight empty ones
-      [vibeInput, compInput, fricInput].forEach(inp => {
+      [vibeInput, compInput, fricInput, trajInput, verdictInput].forEach(inp => {
         if (inp && !inp.value.trim()) {
           inp.style.borderColor = '#EF4444';
           inp.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
@@ -360,26 +587,41 @@ class UserDashboard {
       return;
     }
 
-    const matchPitch = { vibeText, complementText, frictionText };
+    const trajectoryOptions = trajectoryText.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+    const matchPitch = { vibeText, complementText, frictionText, trajectoryOptions, verdictText };
 
     const buildCandidate = (user) => {
       const orig = user._original || {};
+      const photos = user.photos || [];
+      const getImg = (slot, directId) => {
+        const p = photos.find(x => x.slot === slot);
+        return p ? p.id : (directId || "");
+      };
+
       return {
         candidateUserId: user.uid || user.id,
         name: user.name,
         age: user.age ? String(user.age) : "",
         location: user.location || "",
-        imageId: orig.firstImageId || "",
-        secondImageId: orig.secondImageId || "",
-        thirdImageId: orig.thirdImageId || "",
-        fourthImageId: orig.fourthImageId || "",
+        imageId: getImg(1, orig.firstImageId),
+        secondImageId: getImg(2, orig.secondImageId),
+        thirdImageId: getImg(3, orig.thirdImageId),
+        fourthImageId: getImg(4, orig.fourthImageId),
+        matchReason: vibeText,
+        relationshipPreview: verdictText,
         matchPitch: matchPitch,
+        college: user.college || "",
+        work: user.work || ""
       };
     };
 
+    const isAtoB = this.matchDirection === "A_TO_B";
+    const viewer = isAtoB ? userA : userB;
+    const candidate = isAtoB ? userB : userA;
+
     const payload = {
-      candidate1: buildCandidate(userA),
-      candidate2: buildCandidate(userB),
+      candidate1: buildCandidate(viewer),
+      candidate2: buildCandidate(candidate),
     };
 
     const confirmBtn = document.getElementById("matchConfirmBtn");
@@ -388,41 +630,56 @@ class UserDashboard {
       confirmBtn.textContent = "💫 Saving...";
     }
 
+    const url = `${SUGGESTIONS_API.baseUrl}${SUGGESTIONS_API.endpoints.save}`;
+    console.log("[Match Suggestion] Submitting one-way match to:", url, {
+      viewer: { id: viewer.id, uid: viewer.uid, name: viewer.name },
+      candidate: { id: candidate.id, uid: candidate.uid, name: candidate.name },
+      direction: isAtoB ? "A -> B" : "B -> A",
+      payload
+    });
+
     try {
-      const url = `${SUGGESTIONS_API.baseUrl}${SUGGESTIONS_API.endpoints.save}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok)
-        throw new Error(`Server responded with ${response.status}`);
+      console.log(`[Match Suggestion] HTTP Response: ${response.status} ${response.statusText}`);
 
-      console.log("Match saved:", payload);
+      if (!response.ok) {
+        let errorBody = "";
+        try {
+          const errJson = await response.json();
+          errorBody = errJson.message || errJson.error || JSON.stringify(errJson);
+        } catch (_) {
+          errorBody = await response.text();
+        }
+        throw new Error(`Server ${response.status}: ${errorBody || response.statusText}`);
+      }
+
+      const responseData = await response.json().catch(() => null);
+      console.log("[Match Suggestion] Match successfully saved:", responseData || payload);
 
       // Track in history
-      this.addMatchToHistory(userA.name, userB.name, vibeText);
+      this.addMatchToHistory(viewer.name, candidate.name, vibeText);
 
-      // Show success animation
-      this.showMatchSuccess(userA.name, userB.name);
-    } catch (error) {
-      console.error("Failed to save match:", error);
-      this.showError(`Failed to save match: ${error.message}`);
-    } finally {
+      // Show success toast & animation
+      this.showToast(`💘 Match suggested! ${candidate.name} is now in ${viewer.name}'s suggestions.`);
+      this.showMatchSuccess(candidate.name, viewer.name);
+
+      // Reset selection and clear inputs ONLY on success
       this.selectedForMatch = [];
       this.updateMatchBar();
       document
         .querySelectorAll(".grid-card.selected")
         .forEach((c) => c.classList.remove("selected"));
-      if (confirmBtn) {
-        confirmBtn.textContent = "💘 Suggest Match";
-        confirmBtn.disabled = true;
-      }
-      // Clear reason inputs
-      if (vibeInput) vibeInput.value = "";
-      if (compInput) compInput.value = "";
-      if (fricInput) fricInput.value = "";
+
+      // Clear inputs
+      [vibeInput, compInput, fricInput, trajInput, verdictInput].forEach(inp => {
+        if (inp) inp.value = "";
+      });
+
       // Hide comparison panel
       const panel = document.getElementById("matchComparisonPanel");
       if (panel) panel.style.display = "none";
@@ -430,6 +687,20 @@ class UserDashboard {
       if (barInner) barInner.classList.remove("expanded");
       const bar = document.getElementById("matchBar");
       if (bar) bar.classList.remove("expanded");
+
+    } catch (error) {
+      console.error("[Match Suggestion Error]:", error);
+      this.showError(`Failed to save match: ${error.message}`);
+    } finally {
+      if (confirmBtn) {
+        const isAtoB = this.matchDirection === "A_TO_B";
+        const viewer = isAtoB ? userA : userB;
+        const candidate = isAtoB ? userB : userA;
+        confirmBtn.textContent = (viewer && candidate)
+          ? `💘 Suggest ${candidate.name} to ${viewer.name}`
+          : "💘 Suggest Match";
+        confirmBtn.disabled = this.selectedForMatch.length < 2;
+      }
     }
   }
 
@@ -442,7 +713,7 @@ class UserDashboard {
       const matchesSearch =
         searchTerm === "" ||
         user.name.toLowerCase().includes(searchTerm) ||
-        user.college.toLowerCase().includes(searchTerm);
+        String(user.college || "").toLowerCase().includes(searchTerm);
 
       const matchesGender =
         this.currentGenderFilter === "all" ||
@@ -561,6 +832,7 @@ class UserDashboard {
       ? `${S3_CONFIG.baseUrl}${user._original.firstImageId}`
       : this.getPlaceholderImage(user.gender);
 
+    const trimmedName = this.escapeHtml((user.name || "").trim());
     const age = user.age ? `, ${user.age}` : "";
 
     // Determine badge content: show number (1 or 2) if selected
@@ -571,19 +843,25 @@ class UserDashboard {
     // Extra info rows — label is first letter of field name
     const infoRows = this.buildCardInfoRows(user);
 
+    // Suggestion + conversation pills — shown right next to the name
+    const namePills = this._buildNamePills(user);
+
     return `
       <div class="grid-card${isSelected ? " selected" : ""}" data-user-id="${user.id}">
         ${this.matchMode ? `<div class="card-select-badge">${badgeContent}</div>` : ""}
         <div class="grid-card-image-wrapper">
           <img 
             src="${imageUrl}" 
-            alt="${this.escapeHtml(user.name)}"
+            alt="${trimmedName}"
             class="grid-card-image"
             onerror="this.src='${this.getPlaceholderImage(user.gender)}'"
           >
         </div>
         <div class="grid-card-content">
-          <div class="grid-card-name">${this.escapeHtml(user.name)}${age}</div>
+          <div class="grid-card-name-row">
+            <span class="grid-card-name">${trimmedName}${age}</span>
+            <span class="card-name-pills">${namePills}</span>
+          </div>
           <div class="grid-card-college">
             <span>🎓</span>
             <span>${this.escapeHtml(user.college)}</span>
@@ -610,6 +888,14 @@ class UserDashboard {
       rows.push(`<div class="card-info-row">
         <span class="card-info-label">G</span>
         <span class="card-info-pill">${this.escapeHtml(user.preferredGender)}</span>
+      </div>`);
+    }
+
+    // W: Work / Profession
+    if (user.work) {
+      rows.push(`<div class="card-info-row card-info-row--full">
+        <span class="card-info-label" style="color: #60A5FA;">W</span>
+        <span class="card-info-pill" style="max-width: 100%; white-space: normal; height: auto;">${this.escapeHtml(user.work)}</span>
       </div>`);
     }
 
@@ -647,6 +933,65 @@ class UserDashboard {
       rows.push(`<div class="card-info-row card-info-row--full">
         <span class="card-info-label" style="color: var(--color-primary-light);">T</span>
         <div class="card-interests">${traitChips}</div>
+      </div>`);
+    }
+
+    // S: Suggestions & Conversations — explicit list of suggested candidate names, ages & expiry
+    const uid = user.uid || user.id;
+    const sd = this.suggestionData[uid];
+    if (sd) {
+      if (sd.candidates && sd.candidates.length > 0) {
+        const candidateItemsHtml = sd.candidates.map(c => {
+          const diffMs = c.expiry - new Date();
+          const diffHrs = Math.floor(diffMs / 3600000);
+          const diffMin = Math.floor((diffMs % 3600000) / 60000);
+          let expClass = "ok";
+          let expText = "";
+          if (diffMs <= 0) {
+            expClass = "expired";
+            expText = "Expired";
+          } else if (diffHrs < 6) {
+            expClass = "urgent";
+            expText = diffHrs > 0 ? `${diffHrs}h ${diffMin}m` : `${diffMin}m`;
+          } else if (diffHrs < 24) {
+            expClass = "soon";
+            expText = `${diffHrs}h ${diffMin}m`;
+          } else {
+            const d = Math.floor(diffHrs / 24);
+            const h = diffHrs % 24;
+            expClass = "ok";
+            expText = `${d}d ${h}h`;
+          }
+
+          const candidateAgeStr = c.age ? `, ${this.escapeHtml(c.age)}` : "";
+          return `<div class="card-sugg-candidate-item">
+            <span class="card-sugg-candidate-name">👉 <strong>${this.escapeHtml(c.name)}</strong>${candidateAgeStr}</span>
+            <span class="card-sugg-expiry-badge card-sugg-expiry-badge--${expClass}">⏳ ${expText}</span>
+          </div>`;
+        }).join("");
+
+        rows.push(`<div class="card-info-row card-info-row--full">
+          <span class="card-info-label" style="color: #A78BFA;">S</span>
+          <div class="card-sugg-container">
+            <div class="card-sugg-title-bar">
+              <strong>${sd.pendingCount} Suggestion${sd.pendingCount > 1 ? 's' : ''}</strong>
+            </div>
+            <div class="card-sugg-candidates-list">
+              ${candidateItemsHtml}
+            </div>
+          </div>
+        </div>`);
+      } else {
+        rows.push(`<div class="card-info-row card-info-row--full">
+          <span class="card-info-label" style="color: var(--color-text-muted);">S</span>
+          <span class="card-sugg-none">0 Pending Suggestions</span>
+        </div>`);
+      }
+
+      // 💬 Conversations count
+      rows.push(`<div class="card-info-row">
+        <span class="card-info-label card-info-label--conv">💬</span>
+        <span class="card-conv-pill">${sd.conversations} Conversation${sd.conversations !== 1 ? 's' : ''}</span>
       </div>`);
     }
 
@@ -708,11 +1053,16 @@ class UserDashboard {
           ${this.escapeHtml(user.name)}${user.age ? `, ${user.age}` : ""}
         </h2>
 
+        ${this.renderPhotosGallery(user)}
         ${this.renderBasicInfo(user)}
-        ${this.renderPersonalityTraits(curated.personalityTraits)}
-        ${this.renderInterests(curated.interests)}
-        ${this.renderConversationStyle(curated.conversationStyleDescription)}
-        ${this.renderAboutMe(curated.aboutMe)}
+        ${this.renderSignalProfile(user)}
+        ${this.renderMatchingProfile(user)}
+        ${this.renderPromptsSection(user)}
+        ${this.renderSuggestionsSection(user)}
+        ${this.renderPersonalityTraits(curated.personalityTraits || user.personalityTraits)}
+        ${this.renderInterests(curated.interests || user.interests)}
+        ${this.renderConversationStyle(curated.conversationStyleDescription || user.conversationStyle)}
+        ${this.renderAboutMe(curated.aboutMe || user.aboutMe)}
         ${this.renderAdditionalDetails(user, original)}
 
         <button class="btn-select-match" data-uid="${user.id}">⚡ Select for Match</button>
@@ -720,6 +1070,19 @@ class UserDashboard {
     `;
 
     document.body.appendChild(modal);
+
+    // Thumbnail click to swap hero photo
+    const thumbs = modal.querySelectorAll('.modal-photo-img');
+    const heroImg = modal.querySelector('.modal-profile-image');
+    if (heroImg && thumbs.length > 0) {
+      thumbs.forEach((t) => {
+        t.style.cursor = 'pointer';
+        t.title = 'Click to preview';
+        t.addEventListener('click', () => {
+          heroImg.src = t.src;
+        });
+      });
+    }
 
     // "Select for Match" button handler
     const selectBtn = modal.querySelector('.btn-select-match');
@@ -749,6 +1112,32 @@ class UserDashboard {
     });
   }
 
+  renderPhotosGallery(user) {
+    const photos = user.photos || [];
+    if (!photos || photos.length === 0) return "";
+
+    const items = photos.map((p) => {
+      const url = p.id ? `${S3_CONFIG.baseUrl}${p.id}` : this.getPlaceholderImage(user.gender);
+      return `
+        <div class="modal-photo-thumb">
+          <img src="${url}" alt="Photo ${p.slot}" class="modal-photo-img" onerror="this.src='${this.getPlaceholderImage(user.gender)}'" />
+          <span class="modal-photo-slot">Slot ${p.slot}</span>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📸 Uploaded Photos (${photos.length})
+        </div>
+        <div class="modal-photos-gallery">
+          ${items}
+        </div>
+      </div>
+    `;
+  }
+
   renderBasicInfo(user) {
     return `
       <div class="modal-section">
@@ -768,6 +1157,36 @@ class UserDashboard {
             <span class="detail-label">College:</span>
             <span class="detail-value">${this.escapeHtml(user.college)}</span>
           </div>
+          ${
+            user.work
+              ? `
+          <div class="detail-row">
+            <span class="detail-label">Work:</span>
+            <span class="detail-value">${this.escapeHtml(user.work)}</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            user.height
+              ? `
+          <div class="detail-row">
+            <span class="detail-label">Height:</span>
+            <span class="detail-value">${this.escapeHtml(user.height)} cm</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            user.location && user.location !== "Location not set"
+              ? `
+          <div class="detail-row">
+            <span class="detail-label">Location:</span>
+            <span class="detail-value">${this.escapeHtml(user.location)}</span>
+          </div>
+          `
+              : ""
+          }
           ${
             user.gender
               ? `
@@ -798,6 +1217,232 @@ class UserDashboard {
           `
               : ""
           }
+        </div>
+      </div>
+    `;
+  }
+
+  renderSignalProfile(user) {
+    const sp = user.signalProfile;
+    if (!sp || typeof sp !== "object") return "";
+
+    const scoredFields = [
+      { key: "ambitionDrive", label: "Ambition & Drive" },
+      { key: "emotionalAvailability", label: "Emotional Availability" },
+      { key: "socialEnergy", label: "Social Energy" },
+      { key: "lifePace", label: "Life Pace" },
+      { key: "relationshipPace", label: "Relationship Pace" },
+      { key: "authenticityScore", label: "Authenticity" },
+    ];
+
+    const scoredHtml = scoredFields
+      .filter((f) => sp[f.key] !== undefined && sp[f.key] !== null)
+      .map((f) => {
+        const val = Number(sp[f.key]);
+        const pct = Math.round(val <= 1 ? val * 100 : val);
+        return `
+          <div class="signal-metric-box">
+            <div class="signal-metric-row">
+              <span>${f.label}</span>
+              <span>${pct}%</span>
+            </div>
+            <div class="signal-meter">
+              <div class="signal-meter-fill" style="width: ${pct}%;"></div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const proseFields = [
+      { key: "toneSignature", title: "Tone Signature", icon: "🎙️" },
+      { key: "lifeEnergy", title: "Life Energy", icon: "⚡" },
+      { key: "lifestyleTexture", title: "Lifestyle Texture", icon: "☕" },
+      { key: "selfPitch", title: "Self Pitch", icon: "💬" },
+      { key: "journeyNarrative", title: "Journey Narrative", icon: "🧭" },
+    ];
+
+    const proseHtml = proseFields
+      .filter((f) => sp[f.key])
+      .map((f) => `
+        <div class="signal-card">
+          <div class="signal-card-title">${f.icon} ${f.title}</div>
+          <div class="signal-card-text">${this.escapeHtml(sp[f.key])}</div>
+        </div>
+      `)
+      .join("");
+
+    const metaTags = [];
+    if (sp.relationshipIntent) {
+      metaTags.push(`<span class="tier-badge" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #93C5FD;">Intent: ${this.escapeHtml(sp.relationshipIntent)}</span>`);
+    }
+    if (sp.confidence) {
+      metaTags.push(`<span class="tier-badge" style="background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.4); color: #C4B5FD;">Confidence: ${this.escapeHtml(sp.confidence)}</span>`);
+    }
+    if (sp.city) {
+      metaTags.push(`<span class="tier-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6EE7B7;">City: ${this.escapeHtml(sp.city)}</span>`);
+    }
+
+    if (!scoredHtml && !proseHtml && metaTags.length === 0) return "";
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          🧠 AI Signal Profile
+        </div>
+        ${metaTags.length > 0 ? `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--spacing-md);">${metaTags.join("")}</div>` : ""}
+        ${scoredHtml ? `<div class="signal-profile-grid" style="margin-bottom: var(--spacing-md);">${scoredHtml}</div>` : ""}
+        ${proseHtml ? `<div class="signal-profile-grid">${proseHtml}</div>` : ""}
+      </div>
+    `;
+  }
+
+  renderMatchingProfile(user) {
+    const mp = user.matchingProfile;
+    if (!mp || typeof mp !== "object") return "";
+
+    const items = [];
+    if (mp.attractivenessTier !== undefined && mp.attractivenessTier !== null) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">⭐ Attractiveness Tier</div>
+          <div class="signal-card-text"><span class="tier-badge">Tier ${this.escapeHtml(mp.attractivenessTier)}</span></div>
+        </div>
+      `);
+    }
+    if (mp.vibeSummary) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">✨ Vibe Summary</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.vibeSummary)}</div>
+        </div>
+      `);
+    }
+    if (mp.energy) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">⚡ Energy</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.energy)}</div>
+        </div>
+      `);
+    }
+    if (mp.depthPreference) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">🌊 Depth Preference</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.depthPreference)}</div>
+        </div>
+      `);
+    }
+    if (mp.communicationStyle) {
+      items.push(`
+        <div class="signal-card">
+          <div class="signal-card-title">🗣️ Communication Style</div>
+          <div class="signal-card-text">${this.escapeHtml(mp.communicationStyle)}</div>
+        </div>
+      `);
+    }
+
+    if (items.length === 0) return "";
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          🎯 AI Matching Profile
+        </div>
+        <div class="signal-profile-grid">
+          ${items.join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  renderPromptsSection(user) {
+    const prompts = user.prompts;
+    if (!prompts) return "";
+
+    let promptEntries = [];
+    if (Array.isArray(prompts)) {
+      promptEntries = prompts.map((p) => ({
+        q: p.question || p.prompt || p.title,
+        a: p.answer || p.response || p.text,
+      })).filter((p) => p.q && p.a);
+    } else if (typeof prompts === "object") {
+      promptEntries = Object.entries(prompts)
+        .map(([q, a]) => ({ q, a }))
+        .filter((p) => p.q && p.a);
+    }
+
+    if (promptEntries.length === 0) return "";
+
+    const bubbles = promptEntries.map((p) => `
+      <div class="prompt-bubble">
+        <div class="prompt-question">❓ ${this.escapeHtml(p.q)}</div>
+        <div class="prompt-answer">${this.escapeHtml(p.a)}</div>
+      </div>
+    `).join("");
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          💬 Profile Prompts &amp; Q&amp;A
+        </div>
+        <div>
+          ${bubbles}
+        </div>
+      </div>
+    `;
+  }
+
+  renderSuggestionsSection(user) {
+    const uid = user.uid || user.id;
+    const sd = this.suggestionData[uid];
+    if (!sd) return "";
+
+    const candidates = sd.candidates || [];
+    const now = new Date();
+
+    const candidateCards = candidates.length > 0
+      ? candidates.map(c => {
+          const diffMs = c.expiry - now;
+          const diffHrs = Math.floor(diffMs / 3600000);
+          const diffMin = Math.floor((diffMs % 3600000) / 60000);
+          let expClass = "ok";
+          let expText = "";
+          if (diffMs <= 0) {
+            expClass = "expired";
+            expText = "Expired";
+          } else if (diffHrs < 6) {
+            expClass = "urgent";
+            expText = diffHrs > 0 ? `${diffHrs}h ${diffMin}m` : `${diffMin}m`;
+          } else if (diffHrs < 24) {
+            expClass = "soon";
+            expText = `${diffHrs}h ${diffMin}m`;
+          } else {
+            expClass = "ok";
+            expText = `${Math.floor(diffHrs / 24)}d ${diffHrs % 24}h`;
+          }
+
+          const candidateAgeStr = c.age ? `, ${this.escapeHtml(c.age)}` : "";
+          return `
+            <div class="modal-candidate-card">
+              <div class="modal-candidate-header">
+                <span class="modal-candidate-name">👉 <strong>${this.escapeHtml(c.name)}</strong>${candidateAgeStr}</span>
+                <span class="modal-expiry-badge modal-expiry-badge--${expClass}">⏳ Expires in ${expText}</span>
+              </div>
+              ${c.matchReason ? `<div class="modal-candidate-reason">💡 ${this.escapeHtml(c.matchReason)}</div>` : ""}
+            </div>
+          `;
+        }).join("")
+      : `<p style="color: var(--color-text-muted);">No pending suggestions</p>`;
+
+    return `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          📬 Pending Suggestions (${sd.pendingCount}) &amp; Expiry
+        </div>
+        <div class="modal-suggestions-container">
+          ${candidateCards}
         </div>
       </div>
     `;
@@ -1090,6 +1735,123 @@ let dashboardInstance = null;
 document.addEventListener("DOMContentLoaded", () => {
   dashboardInstance = new UserDashboard();
 });
+
+// ─── Suggestions & Conversations (inline card data) ──────────────────────────
+
+UserDashboard.prototype.fetchAllSuggestionData = async function () {
+  const SUGGESTION_EXPIRY_MS = 72 * 60 * 60 * 1000; // 72h
+  const BASE = "https://limitless-sea-53782-2c45e56f3e92.herokuapp.com";
+
+  // Fetch all users in parallel; update cards as each result comes in
+  await Promise.allSettled(
+    this.users.map(async (user) => {
+      const uid = user.uid || user.id;
+      let pendingCount = 0;
+      let nearestExpiry = null;
+      let candidateDetails = [];
+
+      try {
+        const res = await fetch(`${BASE}/api/suggestions/${uid}`, {
+          signal: AbortSignal.timeout(10000)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const candidates = data.candidates || [];
+          pendingCount = candidates.length;
+
+          candidateDetails = candidates.map((c) => {
+            const createdAt = c.createdAt ? new Date(c.createdAt) : new Date();
+            const expiry = new Date(createdAt.getTime() + SUGGESTION_EXPIRY_MS);
+            if (!nearestExpiry || expiry < nearestExpiry) {
+              nearestExpiry = expiry;
+            }
+            return {
+              candidateUserId: c.candidateUserId,
+              name: c.name || "Candidate",
+              age: c.age || "",
+              location: c.location || "",
+              compatibilityScore: c.compatibilityScore,
+              matchReason: c.matchReason,
+              expiry: expiry
+            };
+          });
+        }
+      } catch (e) {
+        // timeout / network error — keep defaults
+      }
+
+      const conversations = user._original?.matches?.length ?? 0;
+
+      // Store candidate details and re-render card info
+      this.suggestionData[uid] = {
+        pendingCount,
+        nearestExpiry,
+        conversations,
+        candidates: candidateDetails
+      };
+      this._updateCardInPlace(uid);
+    })
+  );
+};
+
+// Update both name-row pills and card info rows
+UserDashboard.prototype._updateCardInPlace = function (uid) {
+  const card = document.querySelector(`.grid-card[data-user-id="${uid}"]`);
+  if (!card) return;
+  const user = this.users.find((u) => (u.uid || u.id) === uid);
+  if (!user) return;
+
+  const pillsSpan = card.querySelector(".card-name-pills");
+  if (pillsSpan) pillsSpan.innerHTML = this._buildNamePills(user);
+
+  const existingExtraInfo = card.querySelector(".card-extra-info");
+  const newExtraHtml = this.buildCardInfoRows(user);
+  if (existingExtraInfo) {
+    existingExtraInfo.outerHTML = newExtraHtml;
+  } else {
+    const content = card.querySelector(".grid-card-content");
+    if (content) content.insertAdjacentHTML("beforeend", newExtraHtml);
+  }
+};
+
+// Build the compact pills shown adjacent to the user's name
+UserDashboard.prototype._buildNamePills = function (user) {
+  const uid = user.uid || user.id;
+  const sd = this.suggestionData[uid];
+  if (!sd) return "";
+
+  const parts = [];
+
+  // Pending count badge
+  parts.push(sd.pendingCount > 0
+    ? `<span class="card-sugg-pill card-sugg-pill--active">${sd.pendingCount} 📬</span>`
+    : `<span class="card-sugg-pill card-sugg-pill--none">0 📬</span>`);
+
+  // Expiry badge (only when there are pending suggestions)
+  if (sd.pendingCount > 0 && sd.nearestExpiry) {
+    const diffMs  = sd.nearestExpiry - new Date();
+    const diffHrs = Math.floor(diffMs / 3600000);
+    const diffMin = Math.floor((diffMs % 3600000) / 60000);
+    if (diffMs <= 0) {
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--expired">exp.</span>`);
+    } else if (diffHrs < 6) {
+      const t = diffHrs > 0 ? `${diffHrs}h` : `${diffMin}m`;
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--urgent">⚠ ${t}</span>`);
+    } else if (diffHrs < 24) {
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--soon">${diffHrs}h</span>`);
+    } else {
+      parts.push(`<span class="card-sugg-expiry card-sugg-expiry--ok">${Math.floor(diffHrs/24)}d</span>`);
+    }
+  }
+
+  // Conversations badge
+  parts.push(sd.conversations > 0
+    ? `<span class="card-conv-pill">${sd.conversations} 💬</span>`
+    : `<span class="card-conv-pill card-conv-pill--zero">0 💬</span>`);
+
+  return parts.join("");
+};
+
 
 // ─── Recent Matches Toggle ────────────────────────────────────────────────────
 

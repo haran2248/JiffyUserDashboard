@@ -33,23 +33,25 @@ const S3_CONFIG = {
   baseUrl: 'https://jiffystorebucket.s3.ap-south-1.amazonaws.com/'
 };
 
-// Set current environment (change to 'prod' when ready)
-const ENV = 'prod';  // Using local backend
+// Set current environment
+const ENV = 'prod';  // Using production backend
 
 // Export current configuration
 const API_CONFIG = CONFIG[ENV];
 
 // Suggestions API (internal match service)
 const SUGGESTIONS_API = {
-  baseUrl: 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com',
+  baseUrl: (typeof API_CONFIG !== 'undefined' && API_CONFIG.apiBaseUrl)
+    ? API_CONFIG.apiBaseUrl.replace(/\/api$/, '')
+    : 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com',
   endpoints: {
     save: '/api/suggestions/save'
   }
 };
 
-// AI API (Python agent for pitch generation)
+// AI API (Python agent for pitch generation hosted on Cloud Run)
 const AI_API = {
-  baseUrl: ENV === 'dev' ? 'http://localhost:8000' : 'https://jiffypythonagent-git-923840009509.asia-south1.run.app', // Update with actual prod url
+  baseUrl: 'https://jiffypythonagent-git-923840009509.asia-south1.run.app',
   endpoints: {
     generatePitch: '/match/pitch/generate'
   }
