@@ -220,6 +220,15 @@ function buildUserModelPayload(user) {
         payload.conversationStyle = user.conversationStyle;
     }
 
+    // Defensive sanitization: replace null or non-object fields with empty objects
+    // to prevent Python agent from throwing AttributeError when calling .get()
+    const dictKeys = ['personalDescription', 'professionalDetails', 'curatedProfile', 'basicDetails', 'desiredQualities', 'lifestyle', 'signalProfile'];
+    for (const key of dictKeys) {
+        if (!payload[key] || typeof payload[key] !== 'object' || Array.isArray(payload[key])) {
+            payload[key] = {};
+        }
+    }
+
     return payload;
 }
 
@@ -229,7 +238,8 @@ function buildUserModelPayload(user) {
 function buildSignalsPayload(user) {
     if (!user) return {};
     const orig = user._original || user;
-    return orig.signalProfile || {};
+    const signals = orig.signalProfile;
+    return (signals && typeof signals === 'object' && !Array.isArray(signals)) ? signals : {};
 }
 
 /**

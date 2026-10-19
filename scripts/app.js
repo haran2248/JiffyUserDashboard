@@ -427,53 +427,105 @@ class UserDashboard {
     const vibeInput = document.getElementById("vibeTextInput");
     const compInput = document.getElementById("complementTextInput");
     const fricInput = document.getElementById("frictionTextInput");
+    const trajInput = document.getElementById("trajectoryTextInput");
+    const verdictInput = document.getElementById("verdictTextInput");
+
+    const endpointUrl = `${AI_API.baseUrl}${AI_API.endpoints.generatePitch}`;
+    console.log(`[Pitch Generation] Starting auto-generate pitch:`, {
+      viewer: { id: userA?.id, name: userA?.name },
+      candidate: { id: userB?.id, name: userB?.name },
+      direction: this.matchDirection,
+      endpoint: endpointUrl
+    });
 
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "✨ Generating...";
+      btn.textContent = "✨ Generating (AI running)...";
     }
 
     try {
-      const url = `${AI_API.baseUrl}${AI_API.endpoints.generatePitch}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for AI generation
 
-      const response = await fetch(url, {
+      const payload = {
+        subject_user_id: userB.id,
+        viewer_user_id: userA.id,
+        subject_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userB) : (userB._original || {}),
+        viewer_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userA) : (userA._original || {}),
+        subject_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userB) : (userB._original?.signalProfile || {}),
+        viewer_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userA) : (userA._original?.signalProfile || {})
+      };
+
+      console.log(`[Pitch Generation] Sending POST request to ${endpointUrl} with payload:`, payload);
+
+      const response = await fetch(endpointUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          subject_user_id: userB.id,
-          viewer_user_id: userA.id,
-          subject_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userB) : (userB._original || {}),
-          viewer_user_model: typeof buildUserModelPayload === 'function' ? buildUserModelPayload(userA) : (userA._original || {}),
-          subject_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userB) : (userB._original?.signalProfile || {}),
-          viewer_signals: typeof buildSignalsPayload === 'function' ? buildSignalsPayload(userA) : (userA._original?.signalProfile || {})
-        })
+        body: JSON.stringify(payload)
       });
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) throw new Error("Failed to generate pitch");
-      const data = await response.json();
+      console.log(`[Pitch Generation] HTTP Response: ${response.status} ${response.statusText}`);
 
-      // Check for race condition: abort if selected users changed during request
-      if (this.selectedForMatch[0] !== userA.id || this.selectedForMatch[1] !== userB.id) {
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const errorJson = await response.json();
+          errorDetail = errorJson.detail || JSON.stringify(errorJson);
+        } catch (_) {
+          errorDetail = await response.text();
+        }
+        throw new Error(`Server ${response.status}: ${errorDetail || response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("[Pitch Generation] Received pitch data successfully:", data);
+
+      // Check if selected users changed during request
+      if (!this.selectedForMatch.includes(userA.id) || !this.selectedForMatch.includes(userB.id)) {
+        console.warn("[Pitch Generation] Discarding result because selected users changed during request:", {
+          currentSelected: this.selectedForMatch,
+          requestedA: userA.id,
+          requestedB: userB.id
+        });
         return;
       }
 
-      const trajInput = document.getElementById("trajectoryTextInput");
-      const verdictInput = document.getElementById("verdictTextInput");
+      const inputs = [
+        { el: vibeInput, val: data.vibeText || "", name: "vibeTextInput" },
+        { el: compInput, val: data.complementText || "", name: "complementTextInput" },
+        { el: fricInput, val: data.frictionText || "", name: "frictionTextInput" },
+        { el: trajInput, val: data.trajectoryOptions ? (Array.isArray(data.trajectoryOptions) ? data.trajectoryOptions.join("\n") : data.trajectoryOptions) : "", name: "trajectoryTextInput" },
+        { el: verdictInput, val: data.verdictText || "", name: "verdictTextInput" }
+      ];
 
-      if (vibeInput) vibeInput.value = data.vibeText || "";
-      if (compInput) compInput.value = data.complementText || "";
-      if (fricInput) fricInput.value = data.frictionText || "";
-      if (trajInput) trajInput.value = data.trajectoryOptions ? data.trajectoryOptions.join("\n") : "";
-      if (verdictInput) verdictInput.value = data.verdictText || "";
+      inputs.forEach(({ el, val, name }) => {
+        if (el) {
+          el.value = val;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          // Visual highlight animation
+          el.style.transition = "background-color 0.4s ease";
+          el.style.backgroundColor = "rgba(16, 185, 129, 0.2)";
+          setTimeout(() => {
+            el.style.backgroundColor = "";
+          }, 1200);
+        } else {
+          console.warn(`[Pitch Generation] DOM element #${name} not found!`);
+        }
+      });
+
+      this.showToast("✨ AI Pitch generated and populated!");
 
     } catch (error) {
-      console.error(error);
-      this.showError("Failed to generate pitch via AI.");
+      console.error("[Pitch Generation Error]:", error);
+      const isTimeout = error.name === "AbortError";
+      const message = isTimeout
+        ? "AI pitch generation timed out after 45s. Please check backend status."
+        : `Failed to generate pitch via AI: ${error.message}`;
+      this.showError(message);
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -483,10 +535,20 @@ class UserDashboard {
   }
 
   async confirmMatch() {
-    if (this.selectedForMatch.length < 2) return;
+    if (this.selectedForMatch.length < 2) {
+      console.warn("[Match Suggestion] Cannot confirm match: less than 2 users selected.");
+      this.showError("Please select 2 users to match.");
+      return;
+    }
 
     const userA = this.users.find((u) => u.id === this.selectedForMatch[0]);
     const userB = this.users.find((u) => u.id === this.selectedForMatch[1]);
+
+    if (!userA || !userB) {
+      console.error("[Match Suggestion] Could not find user objects for IDs:", this.selectedForMatch);
+      this.showError("Selected users could not be found in user list.");
+      return;
+    }
 
     // Get the match pitch from the textareas
     const vibeInput = document.getElementById("vibeTextInput");
@@ -502,6 +564,15 @@ class UserDashboard {
     const verdictText = verdictInput ? verdictInput.value.trim() : "";
 
     if (!vibeText || !complementText || !frictionText || !trajectoryText || !verdictText) {
+      console.warn("[Match Suggestion] Validation failed: Some pitch fields are empty", {
+        vibeText: Boolean(vibeText),
+        complementText: Boolean(complementText),
+        frictionText: Boolean(frictionText),
+        trajectoryText: Boolean(trajectoryText),
+        verdictText: Boolean(verdictText)
+      });
+      this.showError("Please fill in or auto-generate all 5 compatibility fields before suggesting a match.");
+
       // Highlight empty ones
       [vibeInput, compInput, fricInput, trajInput, verdictInput].forEach(inp => {
         if (inp && !inp.value.trim()) {
@@ -536,7 +607,11 @@ class UserDashboard {
         secondImageId: getImg(2, orig.secondImageId),
         thirdImageId: getImg(3, orig.thirdImageId),
         fourthImageId: getImg(4, orig.fourthImageId),
+        matchReason: vibeText,
+        relationshipPreview: verdictText,
         matchPitch: matchPitch,
+        college: user.college || "",
+        work: user.work || ""
       };
     };
 
@@ -555,41 +630,56 @@ class UserDashboard {
       confirmBtn.textContent = "💫 Saving...";
     }
 
+    const url = `${SUGGESTIONS_API.baseUrl}${SUGGESTIONS_API.endpoints.save}`;
+    console.log("[Match Suggestion] Submitting one-way match to:", url, {
+      viewer: { id: viewer.id, uid: viewer.uid, name: viewer.name },
+      candidate: { id: candidate.id, uid: candidate.uid, name: candidate.name },
+      direction: isAtoB ? "A -> B" : "B -> A",
+      payload
+    });
+
     try {
-      const url = `${SUGGESTIONS_API.baseUrl}${SUGGESTIONS_API.endpoints.save}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok)
-        throw new Error(`Server responded with ${response.status}`);
+      console.log(`[Match Suggestion] HTTP Response: ${response.status} ${response.statusText}`);
 
-      console.log("Match saved:", payload);
+      if (!response.ok) {
+        let errorBody = "";
+        try {
+          const errJson = await response.json();
+          errorBody = errJson.message || errJson.error || JSON.stringify(errJson);
+        } catch (_) {
+          errorBody = await response.text();
+        }
+        throw new Error(`Server ${response.status}: ${errorBody || response.statusText}`);
+      }
+
+      const responseData = await response.json().catch(() => null);
+      console.log("[Match Suggestion] Match successfully saved:", responseData || payload);
 
       // Track in history
       this.addMatchToHistory(viewer.name, candidate.name, vibeText);
 
-      // Show success animation
+      // Show success toast & animation
+      this.showToast(`💘 Match suggested! ${candidate.name} is now in ${viewer.name}'s suggestions.`);
       this.showMatchSuccess(candidate.name, viewer.name);
-    } catch (error) {
-      console.error("Failed to save match:", error);
-      this.showError(`Failed to save match: ${error.message}`);
-    } finally {
+
+      // Reset selection and clear inputs ONLY on success
       this.selectedForMatch = [];
       this.updateMatchBar();
       document
         .querySelectorAll(".grid-card.selected")
         .forEach((c) => c.classList.remove("selected"));
-      if (confirmBtn) {
-        confirmBtn.textContent = "💘 Suggest Match";
-        confirmBtn.disabled = true;
-      }
-      // Clear reason inputs
-      if (vibeInput) vibeInput.value = "";
-      if (compInput) compInput.value = "";
-      if (fricInput) fricInput.value = "";
+
+      // Clear inputs
+      [vibeInput, compInput, fricInput, trajInput, verdictInput].forEach(inp => {
+        if (inp) inp.value = "";
+      });
+
       // Hide comparison panel
       const panel = document.getElementById("matchComparisonPanel");
       if (panel) panel.style.display = "none";
@@ -597,6 +687,20 @@ class UserDashboard {
       if (barInner) barInner.classList.remove("expanded");
       const bar = document.getElementById("matchBar");
       if (bar) bar.classList.remove("expanded");
+
+    } catch (error) {
+      console.error("[Match Suggestion Error]:", error);
+      this.showError(`Failed to save match: ${error.message}`);
+    } finally {
+      if (confirmBtn) {
+        const isAtoB = this.matchDirection === "A_TO_B";
+        const viewer = isAtoB ? userA : userB;
+        const candidate = isAtoB ? userB : userA;
+        confirmBtn.textContent = (viewer && candidate)
+          ? `💘 Suggest ${candidate.name} to ${viewer.name}`
+          : "💘 Suggest Match";
+        confirmBtn.disabled = this.selectedForMatch.length < 2;
+      }
     }
   }
 
