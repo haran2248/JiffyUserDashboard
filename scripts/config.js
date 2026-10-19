@@ -34,7 +34,7 @@ const S3_CONFIG = {
 };
 
 // Set current environment
-const ENV = 'dev';  // Using local Java backend on localhost:5005
+const ENV = 'prod';  // Using production backend
 
 // Export current configuration
 const API_CONFIG = CONFIG[ENV];
@@ -43,7 +43,7 @@ const API_CONFIG = CONFIG[ENV];
 const SUGGESTIONS_API = {
   baseUrl: (typeof API_CONFIG !== 'undefined' && API_CONFIG.apiBaseUrl)
     ? API_CONFIG.apiBaseUrl.replace(/\/api$/, '')
-    : 'http://localhost:5005',
+    : 'https://limitless-sea-53782-2c45e56f3e92.herokuapp.com',
   endpoints: {
     save: '/api/suggestions/save'
   }
