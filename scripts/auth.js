@@ -3,7 +3,14 @@
 (function () {
   var cfg = window.FIREBASE_CONFIG || {};
   var admins = (window.ADMIN_EMAILS || []).map(function (e) { return e.toLowerCase(); });
-  var BACKEND = /herokuapp\.com|azurewebsites\.net/;
+  // Only these exact backend hosts get the token. Add the live backend host here once confirmed.
+  var BACKEND_HOSTS = ["limitless-sea-53782-2c45e56f3e92.herokuapp.com"];
+  function isBackend(url) {
+    try {
+      var u = new URL(url, location.href);
+      return u.protocol === "https:" && BACKEND_HOSTS.indexOf(u.hostname) >= 0;
+    } catch (e) { return false; }
+  }
   var configured = !!cfg.apiKey && cfg.apiKey !== "REPLACE_ME";
 
   var gate = document.createElement("div");
@@ -65,8 +72,13 @@
   var origFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
     var url = typeof input === "string" ? input : (input && input.url) || "";
-    if (!BACKEND.test(url)) return origFetch(input, init);
-    return ready.then(function (user) { return user.getIdToken(); }).then(function (token) {
+    if (!isBackend(url)) return origFetch(input, init);
+    return ready.then(function () {
+      // Always use the current user, never a cached one.
+      var user = firebase.auth().currentUser;
+      if (!user) throw new Error("Not signed in");
+      return user.getIdToken();
+    }).then(function (token) {
       var headers = new Headers((init && init.headers) || (input && input.headers) || {});
       headers.set("Authorization", "Bearer " + token);
       return origFetch(input, Object.assign({}, init || {}, { headers: headers }));
