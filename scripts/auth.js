@@ -65,6 +65,18 @@
   // It resolves with the admin user, or rejects when sign-in is unavailable.
   window.authReady = ready;
 
+  // Pages that start on DOMContentLoaded (the dashboard app does) are held until sign-in succeeds,
+  // so no data loading or request timeout starts while signed out. If sign-in fails they never start.
+  var addListener = document.addEventListener.bind(document);
+  document.addEventListener = function (type, fn, opts) {
+    if (type === "DOMContentLoaded" && typeof fn === "function") {
+      return addListener(type, function (ev) {
+        ready.then(function () { fn(ev); }, function () { /* sign-in unavailable: stay on the gate */ });
+      }, opts);
+    }
+    return addListener(type, fn, opts);
+  };
+
   document.addEventListener("click", function (e) {
     if (e.target && e.target.id === "auth-btn" && window.firebase) {
       var p = new firebase.auth.GoogleAuthProvider();
