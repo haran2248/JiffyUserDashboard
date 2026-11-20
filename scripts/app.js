@@ -24,6 +24,14 @@ class UserDashboard {
   }
 
   async init() {
+    // Wait for the dashboard sign-in. If sign-in is unavailable or refused, do not start any data loading.
+    if (window.authReady) {
+      try {
+        await window.authReady;
+      } catch (e) {
+        return;
+      }
+    }
     this.showLoading(true);
     this.loadMatchHistory();
     await this.fetchUsers();
