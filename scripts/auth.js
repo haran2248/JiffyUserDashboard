@@ -21,7 +21,7 @@
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 
   function msg(t, showBtn) {
-    var m = document.getElementById("auth-msg"), b = document.getElementById("auth-btn");
+    var m = gate.querySelector("#auth-msg"), b = gate.querySelector("#auth-btn");
     if (m) m.textContent = t;
     if (b) b.style.display = showBtn ? "inline-block" : "none";
   }
@@ -35,6 +35,7 @@
   }
 
   var ready;
+  var denied = "";
   if (!configured) {
     msg("Sign-in is not configured yet (Firebase web config missing).", false);
     ready = Promise.reject(new Error("Sign-in not configured"));
@@ -49,11 +50,14 @@
               gate.style.display = "none";
               resolve(user);
             } else if (user) {
-              msg("Signed in as " + user.email + ", which is not allowed here.", true);
+              gate.style.display = "flex";
+              denied = "Signed in as " + user.email + ", which is not allowed here.";
+              msg(denied, true);
               firebase.auth().signOut();
             } else {
               gate.style.display = "flex";
-              msg("Sign in to open the dashboard.", true);
+              msg(denied || "Sign in to open the dashboard.", true);
+              denied = "";
             }
           });
         });
@@ -71,7 +75,7 @@
   document.addEventListener = function (type, fn, opts) {
     if (type === "DOMContentLoaded" && typeof fn === "function") {
       return addListener(type, function (ev) {
-        ready.then(function () { fn(ev); }, function () { /* sign-in unavailable: stay on the gate */ });
+        ready.then(function () { fn.call(document, ev); }, function () { /* sign-in unavailable: stay on the gate */ });
       }, opts);
     }
     return addListener(type, fn, opts);
