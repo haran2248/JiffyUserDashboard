@@ -61,6 +61,10 @@
     ready.catch(function (err) { msg("Sign-in could not start: " + err.message, false); });
   }
 
+  // Pages can wait on this before starting backend requests, so request timeouts do not run while signed out.
+  // It resolves with the admin user, or rejects when sign-in is unavailable.
+  window.authReady = ready;
+
   document.addEventListener("click", function (e) {
     if (e.target && e.target.id === "auth-btn" && window.firebase) {
       var p = new firebase.auth.GoogleAuthProvider();
