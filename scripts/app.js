@@ -1751,7 +1751,7 @@ UserDashboard.prototype.fetchAllSuggestionData = async function () {
       let candidateDetails = [];
 
       try {
-        const res = await fetch(`${BASE}/api/suggestions/${uid}`, {
+        const res = await fetch(`${BASE}/api/suggestions/${uid}?generate=false`, {
           signal: AbortSignal.timeout(10000)
         });
         if (res.ok) {
